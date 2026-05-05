@@ -1,2 +1,5 @@
 .idea
 fekt-mpg-night-park.iml
+build/
+*.jpg
+*.jpeg
