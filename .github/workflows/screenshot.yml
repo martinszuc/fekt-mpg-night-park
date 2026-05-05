@@ -40,6 +40,7 @@ jobs:
           sleep 4
           DISPLAY=:99 import -window root assets/screenshot.png
           kill "$APP_PID" || true
+          test -s assets/screenshot.png
 
       - name: Commit and push
         run: |
