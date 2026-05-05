@@ -38,7 +38,8 @@
 #include "imageLoad.h"
 #include <cmath>
 #include <string>
-#include <GL/glut.h>
+#include <GLUT/glut.h>   // macOS
+// #include <GL/glut.h>  // Windows/Linux
 
 // ─── camera state ────────────────────────────────────────────────────────────
 

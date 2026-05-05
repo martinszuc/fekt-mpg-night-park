@@ -2,7 +2,8 @@
 #define imageLoad_H
 #include <iostream>
 #include <fstream>
-#include <GL/glut.h>
+#include <GLUT/glut.h>   // macOS
+// #include <GL/glut.h>  // Windows/Linux
 #define bgrConversion true
 
 typedef unsigned char BYTE;
@@ -10,18 +11,18 @@ typedef unsigned short WORD;
 
 #pragma pack(1)
 typedef struct{
-	BYTE	IDLength;		// velikost obrazového identifikátoru
-	BYTE	ColorMapType;	// typ barevné mapy
-	BYTE	Imagetype;		// typ obrázku
-	WORD	CMapStart;		// poèátek barevné palety
-	WORD	CMapLength;		// délka barevné palety
-	BYTE	CMapDepth;		// bitová hloubka položek barevné palety
-	WORD	XOffset;		// X-ová souøadnice poèátku obrázku
-	WORD	YOffset;		// Y-ová souøadnice poèátku obrázku
-	WORD	Width; 			// šíøka obrázku uvedená v pixelech
-	WORD	Height; 		// výška obrázku uvedená v pixelech
-	BYTE	PixelDepth; 	// poèet bitù na jeden pixel (bitová hloubka)
-	BYTE	ImageDescriptor;//	popisovaè obrázku
+	BYTE	IDLength;		// velikost obrazovï¿½ho identifikï¿½toru
+	BYTE	ColorMapType;	// typ barevnï¿½ mapy
+	BYTE	Imagetype;		// typ obrï¿½zku
+	WORD	CMapStart;		// poï¿½ï¿½tek barevnï¿½ palety
+	WORD	CMapLength;		// dï¿½lka barevnï¿½ palety
+	BYTE	CMapDepth;		// bitovï¿½ hloubka poloï¿½ek barevnï¿½ palety
+	WORD	XOffset;		// X-ovï¿½ souï¿½adnice poï¿½ï¿½tku obrï¿½zku
+	WORD	YOffset;		// Y-ovï¿½ souï¿½adnice poï¿½ï¿½tku obrï¿½zku
+	WORD	Width; 			// ï¿½ï¿½ï¿½ka obrï¿½zku uvedenï¿½ v pixelech
+	WORD	Height; 		// vï¿½ï¿½ka obrï¿½zku uvedenï¿½ v pixelech
+	BYTE	PixelDepth; 	// poï¿½et bitï¿½ na jeden pixel (bitovï¿½ hloubka)
+	BYTE	ImageDescriptor;//	popisovaï¿½ obrï¿½zku
 } TGAheader;
 
 typedef struct                       
@@ -50,7 +51,7 @@ typedef struct
 using namespace std;
 
 
-// funkce naèítá jen bitmapové tga, nekomprimované
+// funkce naï¿½ï¿½tï¿½ jen bitmapovï¿½ tga, nekomprimovanï¿½
 unsigned char* loadTGA(const char* name, int& width, int& height, unsigned short& channels){
 
 	ifstream f(name,ios::in|ios::binary|ios::ate);
@@ -75,7 +76,7 @@ unsigned char* loadTGA(const char* name, int& width, int& height, unsigned short
 	std::cout<<"Image "<< name <<" found!! Loading...";
 
 	f.seekg (18 + header.IDLength + header.CMapLength*header.CMapDepth/8, ios::beg);
-	// alokace obrazu už i s okrajem
+	// alokace obrazu uï¿½ i s okrajem
 
 
 	unsigned char* result = new unsigned char[header.Width*header.Height*bytu];
