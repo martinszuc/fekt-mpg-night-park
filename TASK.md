@@ -364,7 +364,7 @@ větrník:   (0,0,-20)
 
 ---
 
-## FÁZE 3 — Bézierovy pláty + textury (commit: "phase3: bezier terrain + textures")
+## FÁZE 3 — Bézierovy pláty + textury ✅ (commit: "phase3: bezier terrain + textures")
 
 ### 3A — DrawTerrain()
 

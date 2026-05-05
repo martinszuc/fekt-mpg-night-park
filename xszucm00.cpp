@@ -395,6 +395,71 @@ void DrawScene() {
     glPopMatrix();
 }
 
+// ─── terrain ─────────────────────────────────────────────────────────────────
+
+void DrawTerrain() {
+    // 4×4 bicubic Bezier control points — hills across the park
+    static float cp[4][4][3] = {
+        {{-40,0,-40},{-13,4,-40},{ 13,3,-40},{40,0,-40}},
+        {{-40,3,-13},{-13,9,-13},{ 13,7,-13},{40,2,-13}},
+        {{-40,2, 13},{-13,6, 13},{ 13,8, 13},{40,3, 13}},
+        {{-40,0, 40},{-13,3, 40},{ 13,4, 40},{40,0, 40}},
+    };
+
+    // texture coordinates scaled ×5 so grass tile repeats across terrain
+    static float tcp[4][4][2] = {
+        {{0,0},{1.67f,0},{3.33f,0},{5,0}},
+        {{0,1.67f},{1.67f,1.67f},{3.33f,1.67f},{5,1.67f}},
+        {{0,3.33f},{1.67f,3.33f},{3.33f,3.33f},{5,3.33f}},
+        {{0,5    },{1.67f,5    },{3.33f,5    },{5,5    }},
+    };
+
+    SetMaterial(0.20f, 0.55f, 0.20f, 4.0f);
+
+    if (texOn && texGrass) {
+        glEnable(GL_TEXTURE_2D);
+        glBindTexture(GL_TEXTURE_2D, texGrass);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        glMap2f(GL_MAP2_TEXTURE_COORD_2, 0,1, 2,4, 0,1, 8,4, &tcp[0][0][0]);
+        glEnable(GL_MAP2_TEXTURE_COORD_2);
+    }
+
+    glMap2f(GL_MAP2_VERTEX_3,
+        0,1,  3, 4,   // u: stride=3 floats per point
+        0,1, 12, 4,   // v: stride=12 floats per row of 4 points
+        &cp[0][0][0]);
+    glEnable(GL_MAP2_VERTEX_3);
+    glEnable(GL_AUTO_NORMAL);
+    glMapGrid2f(30, 0,1, 30, 0,1);
+    glEvalMesh2(GL_FILL, 0,30, 0,30);
+
+    glDisable(GL_MAP2_VERTEX_3);
+    glDisable(GL_AUTO_NORMAL);
+    glDisable(GL_MAP2_TEXTURE_COORD_2);
+    if (texOn) glDisable(GL_TEXTURE_2D);
+}
+
+// path strip with procedural checker texture running through the park
+void DrawPath() {
+    if (texOn && texChecker) {
+        glEnable(GL_TEXTURE_2D);
+        glBindTexture(GL_TEXTURE_2D, texChecker);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    }
+    SetMaterial(0.50f, 0.45f, 0.35f, 8.0f);
+    glNormal3f(0, 1, 0);
+    // path along Z axis, 2 units wide, from z=25 to z=-22
+    glBegin(GL_QUADS);
+        glTexCoord2f(0, 0);  glVertex3f(-1.0f, 0.02f,  25.0f);
+        glTexCoord2f(1, 0);  glVertex3f( 1.0f, 0.02f,  25.0f);
+        glTexCoord2f(1, 24); glVertex3f( 1.0f, 0.02f, -22.0f);
+        glTexCoord2f(0, 24); glVertex3f(-1.0f, 0.02f, -22.0f);
+    glEnd();
+    if (texOn) glDisable(GL_TEXTURE_2D);
+}
+
 // ─── GLUT callbacks ──────────────────────────────────────────────────────────
 
 void OnReshape(int w, int h) {
@@ -630,15 +695,11 @@ void OnDisplay() {
         glDisable(GL_LIGHT1);
     }
 
-    // ground plane (placeholder until Bezier terrain in phase 3)
-    SetMaterial(0.15f, 0.40f, 0.15f, 4.0f);
-    glNormal3f(0.0f, 1.0f, 0.0f);
-    glBegin(GL_QUADS);
-        glVertex3f(-100.0f, 0.0f,  100.0f);
-        glVertex3f( 100.0f, 0.0f,  100.0f);
-        glVertex3f( 100.0f, 0.0f, -100.0f);
-        glVertex3f(-100.0f, 0.0f, -100.0f);
-    glEnd();
+    // Bezier terrain with grass texture
+    DrawTerrain();
+
+    // checker-textured path strip
+    DrawPath();
 
     // all scene objects
     DrawScene();
