@@ -450,11 +450,14 @@ void DrawScene() {
 
 void DrawTerrain() {
     // 4×4 bicubic Bezier control points — hills across the park
+    // Hills only at the four far corners; interior stays near Y=0 so
+    // scene objects placed at ground level are not buried by the surface.
+    // Bezier center evaluates to ≈0.12 (well below the shortest leg at 0.7).
     static float cp[4][4][3] = {
-        {{-40,0,-40},{-13,3,-40},{ 13,2,-40},{40,0,-40}},
-        {{-40,2,-13},{-13,0,-13},{ 13,0,-13},{40,2,-13}},
-        {{-40,2, 13},{-13,0, 13},{ 13,0, 13},{40,2, 13}},
-        {{-40,0, 40},{-13,2, 40},{ 13,3, 40},{40,0, 40}},
+        {{-40,2,-40},{-13,0,-40},{ 13,0,-40},{40,2,-40}},
+        {{-40,0,-13},{-13,0,-13},{ 13,0,-13},{40,0,-13}},
+        {{-40,0, 13},{-13,0, 13},{ 13,0, 13},{40,0, 13}},
+        {{-40,2, 40},{-13,0, 40},{ 13,0, 40},{40,2, 40}},
     };
 
     // texture coordinates scaled ×5 so grass tile repeats across terrain
