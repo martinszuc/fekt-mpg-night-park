@@ -1,0 +1,50 @@
+name: Screenshot
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'assets/screenshot.png'
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  screenshot:
+    name: Render and commit screenshot
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            cmake build-essential \
+            libgl1-mesa-dev libglu1-mesa-dev \
+            freeglut3-dev \
+            xvfb imagemagick
+
+      - name: Build
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build --parallel
+
+      - name: Capture screenshot
+        run: |
+          Xvfb :99 -screen 0 1280x720x24 &
+          sleep 1
+          DISPLAY=:99 LIBGL_ALWAYS_SOFTWARE=1 ./build/mpg_projekt &
+          APP_PID=$!
+          sleep 4
+          DISPLAY=:99 import -window root assets/screenshot.png
+          kill "$APP_PID" || true
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add assets/screenshot.png
+          git diff --staged --quiet || \
+            (git commit -m "chore(ci): update screenshot [skip ci]" && git push)

@@ -1,5 +1,7 @@
 # MPC-MPG Projekt — Noční park
 
+![Screenshot](assets/screenshot.png)
+
 ## Přehled
 
 Semestrální projekt z předmětu MPC-MPG (2025/26).
