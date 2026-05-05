@@ -1,27 +1,27 @@
 /*
- * MPC-MPG 2025/26 - Semester project
+* MPC-MPG 2025/26 - Semestralni projekt
  *
- * Author:      Martin Szüč
- * Student ID:  (fill in)
+ * Autor:       Martin Szüč
+ * Student ID:  (231284)
  * Email:       xszucm00@vut.cz
  *
- * Project:     Night Park
+ * Nazev projektu: Nocni park
  *
- * Completed tasks:
- *   1.  Object modelling (5+ custom objects)       3 pts
- *   2.  Animation (windmill)                       1 pt
- *   3.  Lighting + normals                         1 pt
- *   4.  Free movement (mouse + WASD/arrows)        1 pt
- *   5.  Menu (6 items)                             2 pts
- *   6.  Text output (HUD)                          2 pts
- *   7.  Handheld torch (key R)                     2 pts
- *   10. Ascent/descent (Page Up/Down)              1 pt
- *   12. Footstep simulation (camera bobbing)       2 pts
- *   14. Transparency (lantern window)              1 pt
- *   16. Texturing (grass.bmp + checker)            2 pts
- *   17. Bezier patches (terrain)                   2 pts
- *   11. Object throw (Space + gravity)             2 pts
- *                                           TOTAL: 24 pts
+ * Seznam vypracovanych ukolu:
+ *   1.  Modelovani objektu (5+ vlastnich)          3 b
+ *   2.  Animace (vetyrnik)                         1 b
+ *   3.  Osvetleni + normaly                        1 b
+ *   4.  Volny pohyb (mys + WASD/sipky)             1 b
+ *   5.  Menu (6 polozek)                           2 b
+ *   6.  Vypis textu (HUD)                          2 b
+ *   7.  Rucni svitilna (klavesa R)                 2 b
+ *   10. Stoupani/klesani (Page Up/Down)            1 b
+ *   12. Simulace kroku (camera bobbing)            2 b
+ *   14. Pruhlednost (okno lucerny)                 1 b
+ *   16. Texturovani (grass.bmp + checker)          2 b
+ *   17. Bezierovy platy (teren)                    2 b
+ *   11. Hod predmetu (Space + gravitace)           2 b
+ *                                              CELKEM: 24 b
  *
  * Controls:
  *   W/S/A/D or arrows   move
