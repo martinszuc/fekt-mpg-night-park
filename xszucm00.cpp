@@ -107,9 +107,9 @@ void OnInit() {
     glEnable(GL_NORMALIZE);
 
     // GL_LIGHT0 — moon (directional, blue-white)
-    GLfloat amb0[]  = {0.05f, 0.05f, 0.15f, 1.0f};
-    GLfloat diff0[] = {0.3f,  0.3f,  0.5f,  1.0f};
-    GLfloat spec0[] = {0.1f,  0.1f,  0.2f,  1.0f};
+    GLfloat amb0[]  = {0.08f, 0.08f, 0.18f, 1.0f};
+    GLfloat diff0[] = {0.5f,  0.5f,  0.75f, 1.0f};
+    GLfloat spec0[] = {0.15f, 0.15f, 0.25f, 1.0f};
     glLightfv(GL_LIGHT0, GL_AMBIENT,  amb0);
     glLightfv(GL_LIGHT0, GL_DIFFUSE,  diff0);
     glLightfv(GL_LIGHT0, GL_SPECULAR, spec0);
@@ -145,7 +145,7 @@ void OnInit() {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
     // external grass texture (skipped gracefully if file missing)
-    setTexture("grass.bmp", &texGrass, true);
+    setTexture("assets/textures/grass.bmp", &texGrass, true);
 }
 
 void OnTimer(int) {
@@ -164,9 +164,9 @@ void OnTimer(int) {
 
     if (isMoving) {
         bobTimer += dt;
-        bobOffset = sinf(bobTimer * 8.0f) * 0.15f;
+        bobOffset = sinf(bobTimer * 10.0f) * 0.28f;
     } else {
-        bobOffset *= 0.85f;
+        bobOffset *= 0.80f;
         if (fabsf(bobOffset) < 0.001f) bobOffset = 0.0f;
     }
 
@@ -321,15 +321,22 @@ void OnDisplay() {
     }
 
     // placeholder ground — replaced by Bezier terrain in phase 3
-    glDisable(GL_LIGHTING);
-    glColor3f(0.1f, 0.3f, 0.1f);
-    glBegin(GL_QUADS);
-        glVertex3f(-100.0f, 0.0f,  100.0f);
-        glVertex3f( 100.0f, 0.0f,  100.0f);
-        glVertex3f( 100.0f, 0.0f, -100.0f);
-        glVertex3f(-100.0f, 0.0f, -100.0f);
-    glEnd();
-    glEnable(GL_LIGHTING);
+    {
+        GLfloat amb[]  = {0.05f, 0.15f, 0.05f, 1.0f};
+        GLfloat diff[] = {0.15f, 0.40f, 0.15f, 1.0f};
+        GLfloat spec[] = {0.05f, 0.05f, 0.05f, 1.0f};
+        glMaterialfv(GL_FRONT, GL_AMBIENT,   amb);
+        glMaterialfv(GL_FRONT, GL_DIFFUSE,   diff);
+        glMaterialfv(GL_FRONT, GL_SPECULAR,  spec);
+        glMaterialf (GL_FRONT, GL_SHININESS, 4.0f);
+        glNormal3f(0.0f, 1.0f, 0.0f);
+        glBegin(GL_QUADS);
+            glVertex3f(-100.0f, 0.0f,  100.0f);
+            glVertex3f( 100.0f, 0.0f,  100.0f);
+            glVertex3f( 100.0f, 0.0f, -100.0f);
+            glVertex3f(-100.0f, 0.0f, -100.0f);
+        glEnd();
+    }
 
     // HUD drawn last, before buffer swap
     DrawHUD(lastAction.c_str());
