@@ -99,7 +99,7 @@ void SpawnProjectile() {
 // ─── scene drawing ───────────────────────────────────────────────────────────
 
 void SetMaterial(float r, float g, float b, float shin = 32.0f) {
-    GLfloat amb[]  = {r * 0.2f, g * 0.2f, b * 0.2f, 1.0f};
+    GLfloat amb[]  = {r * 0.4f, g * 0.4f, b * 0.4f, 1.0f};
     GLfloat diff[] = {r,        g,        b,        1.0f};
     GLfloat spec[] = {0.3f,     0.3f,     0.3f,     1.0f};
     glMaterialfv(GL_FRONT, GL_AMBIENT,   amb);
@@ -183,26 +183,30 @@ void DrawTree() {
 
 void DrawBench() {
     SetMaterial(0.55f, 0.30f, 0.10f);
-    // seat
+
+    const float seatW = 2.0f, seatD = 0.65f, seatH = 0.7f;
+
+    // seat plank — visible thickness of 0.12
     glPushMatrix();
-        glTranslatef(0, 0.7f, 0);
-        DrawBox(2.0f, 0.1f, 0.5f);
+        glTranslatef(0, seatH, 0);
+        DrawBox(seatW, 0.12f, seatD);
     glPopMatrix();
-    // 4 legs
-    float lx[2] = {-0.85f, 0.85f};
-    float lz[2] = {-0.18f, 0.18f};
+
+    // 4 legs at seat corners
+    float lx[2] = {-(seatW * 0.5f - 0.08f),  (seatW * 0.5f - 0.08f)};
+    float lz[2] = {-(seatD * 0.5f - 0.08f),   (seatD * 0.5f - 0.08f)};
     for (int i = 0; i < 2; i++) for (int j = 0; j < 2; j++) {
         glPushMatrix();
             glTranslatef(lx[i], 0, lz[j]);
-            DrawBox(0.08f, 0.7f, 0.08f);
+            DrawBox(0.10f, seatH, 0.10f);
         glPopMatrix();
     }
-    // backrest (tilted ~15° backwards)
+
+    // backrest — rooted at back edge of seat, tilted 15° back
     glPushMatrix();
-        glTranslatef(0, 0.75f, -0.22f);
+        glTranslatef(0, seatH, -(seatD * 0.5f));
         glRotatef(-15.0f, 1, 0, 0);
-        glTranslatef(0, 0, 0);
-        DrawBox(2.0f, 0.55f, 0.08f);
+        DrawBox(seatW, 0.60f, 0.09f);
     glPopMatrix();
 }
 
@@ -408,10 +412,14 @@ void OnInit() {
     glShadeModel(GL_SMOOTH);
     glEnable(GL_NORMALIZE);
 
+    // scene-wide ambient so shadowed faces aren't pitch black
+    GLfloat globalAmb[] = {0.18f, 0.18f, 0.28f, 1.0f};
+    glLightModelfv(GL_LIGHT_MODEL_AMBIENT, globalAmb);
+
     // GL_LIGHT0 — moon (directional, blue-white)
-    GLfloat amb0[]  = {0.08f, 0.08f, 0.18f, 1.0f};
-    GLfloat diff0[] = {0.5f,  0.5f,  0.75f, 1.0f};
-    GLfloat spec0[] = {0.15f, 0.15f, 0.25f, 1.0f};
+    GLfloat amb0[]  = {0.20f, 0.20f, 0.35f, 1.0f};
+    GLfloat diff0[] = {0.70f, 0.70f, 0.90f, 1.0f};
+    GLfloat spec0[] = {0.25f, 0.25f, 0.40f, 1.0f};
     glLightfv(GL_LIGHT0, GL_AMBIENT,  amb0);
     glLightfv(GL_LIGHT0, GL_DIFFUSE,  diff0);
     glLightfv(GL_LIGHT0, GL_SPECULAR, spec0);
@@ -455,10 +463,10 @@ void OnTimer(int) {
     const float speed = 5.0f;
     float dx = 0.0f, dz = 0.0f;
 
-    if (keys['w'] || keys['W'] || keys[GLUT_KEY_UP   + 200]) { dx += sinf(yaw) * speed * dt; dz += cosf(yaw) * speed * dt; }
-    if (keys['s'] || keys['S'] || keys[GLUT_KEY_DOWN + 200]) { dx -= sinf(yaw) * speed * dt; dz -= cosf(yaw) * speed * dt; }
-    if (keys['a'] || keys['A'])                               { dx += cosf(yaw) * speed * dt; dz -= sinf(yaw) * speed * dt; }
-    if (keys['d'] || keys['D'])                               { dx -= cosf(yaw) * speed * dt; dz += sinf(yaw) * speed * dt; }
+    if (keys['w'] || keys['W'] || keys[GLUT_KEY_UP   + 200]) { dx -= sinf(yaw) * speed * dt; dz -= cosf(yaw) * speed * dt; }
+    if (keys['s'] || keys['S'] || keys[GLUT_KEY_DOWN + 200]) { dx += sinf(yaw) * speed * dt; dz += cosf(yaw) * speed * dt; }
+    if (keys['a'] || keys['A'])                               { dx -= cosf(yaw) * speed * dt; dz += sinf(yaw) * speed * dt; }
+    if (keys['d'] || keys['D'])                               { dx += cosf(yaw) * speed * dt; dz -= sinf(yaw) * speed * dt; }
 
     camX += dx;
     camZ += dz;
