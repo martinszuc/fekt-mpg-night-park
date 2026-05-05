@@ -35,6 +35,7 @@
  * Platform: macOS 14, CLion, OpenGL/GLUT (framework)
  */
 
+#include <cstring>
 #include "imageLoad.h"
 #define _USE_MATH_DEFINES
 #include <cmath>
