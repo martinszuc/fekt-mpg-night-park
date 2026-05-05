@@ -22,3 +22,27 @@ jobs:
 
       - name: Verify binary exists
         run: test -f build/mpg_projekt
+
+  build-windows:
+    name: Windows build
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install freeglut via vcpkg
+        run: vcpkg install freeglut:x64-windows
+        env:
+          VCPKG_DEFAULT_TRIPLET: x64-windows
+
+      - name: Configure
+        run: >
+          cmake -B build -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake"
+
+      - name: Build
+        run: cmake --build build --config Release --parallel
+
+      - name: Verify binary exists
+        run: Test-Path build\Release\mpg_projekt.exe
+        shell: pwsh
