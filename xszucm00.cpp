@@ -599,8 +599,8 @@ void OnDisplay() {
     glLoadIdentity();
 
     // camera via rotations + translation (no gluLookAt)
-    glRotatef(-pitch * (180.0f / M_PI), 1.0f, 0.0f, 0.0f);
-    glRotatef(-yaw   * (180.0f / M_PI), 0.0f, 1.0f, 0.0f);
+    glRotatef(-pitch * (180.0f / (float)M_PI), 1.0f, 0.0f, 0.0f);
+    glRotatef(-yaw   * (180.0f / (float)M_PI), 0.0f, 1.0f, 0.0f);
     glTranslatef(-camX, -(camFloorY + bobOffset), -camZ);
 
     // directional moon light (set after camera rotation so it's world-space)

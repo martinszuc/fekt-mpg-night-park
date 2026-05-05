@@ -11,12 +11,6 @@ elseif(WIN32)
     find_package(OpenGL REQUIRED)
     find_package(GLUT REQUIRED)
     target_link_libraries(mpg_projekt OpenGL::GL GLUT::GLUT)
-    # copy freeglut.dll next to the binary so it runs without PATH setup
-    add_custom_command(TARGET mpg_projekt POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            $<TARGET_RUNTIME_DLLS:mpg_projekt>
-            $<TARGET_FILE_DIR:mpg_projekt>
-        COMMAND_EXPAND_LISTS)
 else()
     find_package(OpenGL REQUIRED)
     find_package(GLUT REQUIRED)
