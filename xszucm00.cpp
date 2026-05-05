@@ -611,6 +611,16 @@ void OnTimer(int) {
         if (p.y < -10.0f) p.active = false;
     }
 
+    static int debugTick = 0;
+    if (++debugTick >= 312) {
+        debugTick = 0;
+        printf("[CAM] x=%.2f  y=%.2f  z=%.2f  yaw=%.2f deg  pitch=%.2f deg\n",
+               camX, camFloorY, camZ,
+               yaw   * (180.0f / (float)M_PI),
+               pitch * (180.0f / (float)M_PI));
+        fflush(stdout);
+    }
+
     glutPostRedisplay();
     glutTimerFunc(16, OnTimer, 0);
 }
@@ -662,6 +672,13 @@ void OnKeyboard(unsigned char key, int, int) {
         lastAction = torchOn ? "torch ON" : "torch OFF";
     }
     if (key == ' ') SpawnProjectile();
+    if (key == 'p' || key == 'P') {
+        printf("[CAM] x=%.2f  y=%.2f  z=%.2f  yaw=%.2f deg  pitch=%.2f deg\n",
+               camX, camFloorY, camZ,
+               yaw   * (180.0f / (float)M_PI),
+               pitch * (180.0f / (float)M_PI));
+        fflush(stdout);
+    }
 }
 
 void OnKeyboardUp(unsigned char key, int, int) {
