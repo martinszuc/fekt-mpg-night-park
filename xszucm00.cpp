@@ -1,27 +1,27 @@
 /*
-* MPC-MPG 2025/26 - Semestralni projekt
+ * MPC-MPG 2025/26 - Semester project
  *
- * Autor:       Martin Szüč
+ * Author:      Martin Szüč
  * Student ID:  (231284)
  * Email:       xszucm00@vut.cz
  *
- * Nazev projektu: Nocni park
+ * Project name: Night Park
  *
- * Seznam vypracovanych ukolu:
- *   1.  Modelovani objektu (5+ vlastnich)          3 b
- *   2.  Animace (vetyrnik)                         1 b
- *   3.  Osvetleni + normaly                        1 b
- *   4.  Volny pohyb (mys + WASD/sipky)             1 b
- *   5.  Menu (6 polozek)                           2 b
- *   6.  Vypis textu (HUD)                          2 b
- *   7.  Rucni svitilna (klavesa R)                 2 b
- *   10. Stoupani/klesani (Page Up/Down)            1 b
- *   12. Simulace kroku (camera bobbing)            2 b
- *   14. Pruhlednost (okno lucerny)                 1 b
- *   16. Texturovani (grass.bmp + checker)          2 b
- *   17. Bezierovy platy (teren)                    2 b
- *   11. Hod predmetu (Space + gravitace)           2 b
- *                                              CELKEM: 24 b
+ * Implemented tasks:
+ *   1.  Object modelling (5+ custom objects)       3 b
+ *   2.  Animation (windmill)                       1 b
+ *   3.  Lighting + normals                         1 b
+ *   4.  Free movement (mouse + WASD/arrows)        1 b
+ *   5.  Menu (6 items)                             2 b
+ *   6.  Text display (HUD)                         2 b
+ *   7.  Handheld torch (key R)                     2 b
+ *   10. Ascend/descend (Page Up/Down)              1 b
+ *   12. Step simulation (camera bobbing)           2 b
+ *   14. Transparency (lantern window)              1 b
+ *   16. Texturing (grass.bmp + checker)            2 b
+ *   17. Bezier patches (terrain)                   2 b
+ *   11. Throw object (Space + gravity)             2 b
+ *                                              TOTAL: 24 b
  *
  * Controls:
  *   W/S/A/D or arrows   move
@@ -38,6 +38,7 @@
 #include "imageLoad.h"
 #define _USE_MATH_DEFINES
 #include <cmath>
+#include <cstdio>
 #include <string>
 #ifndef M_PI
 #  define M_PI 3.14159265358979323846
@@ -50,7 +51,7 @@
 
 // ─── camera state ────────────────────────────────────────────────────────────
 
-float camX = 0.0f, camY = 1.7f, camZ = 20.0f;
+float camX = 0.0f, camZ = 20.0f;
 float yaw   = 0.0f;
 float pitch = 0.0f;
 bool  keys[512] = {};
@@ -99,7 +100,7 @@ void SpawnProjectile() {
 // ─── scene drawing ───────────────────────────────────────────────────────────
 
 void SetMaterial(float r, float g, float b, float shin = 32.0f) {
-    GLfloat amb[]  = {r * 0.4f, g * 0.4f, b * 0.4f, 1.0f};
+    GLfloat amb[]  = {r * 0.2f, g * 0.2f, b * 0.2f, 1.0f};
     GLfloat diff[] = {r,        g,        b,        1.0f};
     GLfloat spec[] = {0.3f,     0.3f,     0.3f,     1.0f};
     glMaterialfv(GL_FRONT, GL_AMBIENT,   amb);
@@ -229,7 +230,21 @@ void DrawLantern() {
         glTranslatef(0, 0.45f, 0);
         DrawBox(0.40f, 0.10f, 0.40f);
     glPopMatrix();
-    // transparent window drawn separately in OnDisplay (phase 4)
+    // transparent window drawn separately in OnDisplay via DrawLanternWindow()
+}
+
+void DrawLanternWindow() {
+    GLfloat diff[] = {1.0f, 0.9f, 0.5f, 0.4f};
+    GLfloat amb[]  = {0.4f, 0.36f, 0.2f, 0.4f};
+    GLfloat spec[] = {0.3f, 0.3f, 0.3f, 0.4f};
+    glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE,   diff);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT,   amb);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR,  spec);
+    glMaterialf (GL_FRONT_AND_BACK, GL_SHININESS, 32.0f);
+    glPushMatrix();
+        glTranslatef(0, 4.0f, 0);
+        DrawBox(0.42f, 0.45f, 0.42f);
+    glPopMatrix();
 }
 
 void DrawShed() {
@@ -334,6 +349,42 @@ void DrawWindmill() {
     }
 }
 
+// ─── projectile drawing ──────────────────────────────────────────────────────
+
+static const float octVerts[6][3] = {
+    { 1, 0, 0}, {-1, 0, 0},
+    { 0, 1, 0}, { 0,-1, 0},
+    { 0, 0, 1}, { 0, 0,-1},
+};
+static const int octFaces[8][3] = {
+    {0,2,4},{2,1,4},{1,3,4},{3,0,4},
+    {0,3,5},{3,1,5},{1,2,5},{2,0,5},
+};
+
+void DrawOctahedron(float r) {
+    glBegin(GL_TRIANGLES);
+    for (auto& f : octFaces) {
+        float nx = (octVerts[f[0]][0] + octVerts[f[1]][0] + octVerts[f[2]][0]) / 3.0f;
+        float ny = (octVerts[f[0]][1] + octVerts[f[1]][1] + octVerts[f[2]][1]) / 3.0f;
+        float nz = (octVerts[f[0]][2] + octVerts[f[1]][2] + octVerts[f[2]][2]) / 3.0f;
+        glNormal3f(nx, ny, nz);
+        for (int v : f)
+            glVertex3f(octVerts[v][0] * r, octVerts[v][1] * r, octVerts[v][2] * r);
+    }
+    glEnd();
+}
+
+void DrawProjectiles() {
+    SetMaterial(0.9f, 0.2f, 0.2f, 64.0f);
+    for (auto& p : projectiles) {
+        if (!p.active) continue;
+        glPushMatrix();
+            glTranslatef(p.x, p.y, p.z);
+            DrawOctahedron(0.2f);
+        glPopMatrix();
+    }
+}
+
 // ─── scene assembly ──────────────────────────────────────────────────────────
 
 void DrawScene() {
@@ -400,10 +451,10 @@ void DrawScene() {
 void DrawTerrain() {
     // 4×4 bicubic Bezier control points — hills across the park
     static float cp[4][4][3] = {
-        {{-40,0,-40},{-13,4,-40},{ 13,3,-40},{40,0,-40}},
-        {{-40,3,-13},{-13,9,-13},{ 13,7,-13},{40,2,-13}},
-        {{-40,2, 13},{-13,6, 13},{ 13,8, 13},{40,3, 13}},
-        {{-40,0, 40},{-13,3, 40},{ 13,4, 40},{40,0, 40}},
+        {{-40,0,-40},{-13,3,-40},{ 13,2,-40},{40,0,-40}},
+        {{-40,2,-13},{-13,0,-13},{ 13,0,-13},{40,2,-13}},
+        {{-40,2, 13},{-13,0, 13},{ 13,0, 13},{40,2, 13}},
+        {{-40,0, 40},{-13,2, 40},{ 13,3, 40},{40,0, 40}},
     };
 
     // texture coordinates scaled ×5 so grass tile repeats across terrain
@@ -530,8 +581,8 @@ void OnTimer(int) {
 
     if (keys['w'] || keys['W'] || keys[GLUT_KEY_UP   + 200]) { dx -= sinf(yaw) * speed * dt; dz -= cosf(yaw) * speed * dt; }
     if (keys['s'] || keys['S'] || keys[GLUT_KEY_DOWN + 200]) { dx += sinf(yaw) * speed * dt; dz += cosf(yaw) * speed * dt; }
-    if (keys['a'] || keys['A'])                               { dx -= cosf(yaw) * speed * dt; dz += sinf(yaw) * speed * dt; }
-    if (keys['d'] || keys['D'])                               { dx += cosf(yaw) * speed * dt; dz -= sinf(yaw) * speed * dt; }
+    if (keys['a'] || keys['A'] || keys[GLUT_KEY_LEFT  + 200]) { dx -= cosf(yaw) * speed * dt; dz += sinf(yaw) * speed * dt; }
+    if (keys['d'] || keys['D'] || keys[GLUT_KEY_RIGHT + 200]) { dx += cosf(yaw) * speed * dt; dz -= sinf(yaw) * speed * dt; }
 
     camX += dx;
     camZ += dz;
@@ -561,16 +612,20 @@ void OnTimer(int) {
 }
 
 void OnSpecial(int key, int, int) {
-    if (key == GLUT_KEY_UP)   keys[GLUT_KEY_UP   + 200] = true;
-    if (key == GLUT_KEY_DOWN) keys[GLUT_KEY_DOWN + 200] = true;
+    if (key == GLUT_KEY_UP)    keys[GLUT_KEY_UP    + 200] = true;
+    if (key == GLUT_KEY_DOWN)  keys[GLUT_KEY_DOWN  + 200] = true;
+    if (key == GLUT_KEY_LEFT)  keys[GLUT_KEY_LEFT  + 200] = true;
+    if (key == GLUT_KEY_RIGHT) keys[GLUT_KEY_RIGHT + 200] = true;
     if (key == GLUT_KEY_PAGE_UP)   { camFloorY += 0.5f; if (camFloorY >  30.0f) camFloorY =  30.0f; lastAction = "camera up"; }
     if (key == GLUT_KEY_PAGE_DOWN) { camFloorY -= 0.5f; if (camFloorY < -5.0f)  camFloorY = -5.0f;  lastAction = "camera down"; }
     glutPostRedisplay();
 }
 
 void OnSpecialUp(int key, int, int) {
-    if (key == GLUT_KEY_UP)   keys[GLUT_KEY_UP   + 200] = false;
-    if (key == GLUT_KEY_DOWN) keys[GLUT_KEY_DOWN + 200] = false;
+    if (key == GLUT_KEY_UP)    keys[GLUT_KEY_UP    + 200] = false;
+    if (key == GLUT_KEY_DOWN)  keys[GLUT_KEY_DOWN  + 200] = false;
+    if (key == GLUT_KEY_LEFT)  keys[GLUT_KEY_LEFT  + 200] = false;
+    if (key == GLUT_KEY_RIGHT) keys[GLUT_KEY_RIGHT + 200] = false;
 }
 
 void OnMouseButton(int button, int state, int x, int y) {
@@ -632,7 +687,7 @@ void OnMenu(int val) {
 
 // ─── HUD ─────────────────────────────────────────────────────────────────────
 
-void DrawHUD(const char* text) {
+void DrawHUD() {
     int w = glutGet(GLUT_WINDOW_WIDTH);
     int h = glutGet(GLUT_WINDOW_HEIGHT);
 
@@ -648,10 +703,22 @@ void DrawHUD(const char* text) {
     glPushMatrix();
     glLoadIdentity();
 
+    // bottom-left: last action
     glColor3f(1.0f, 1.0f, 0.0f);
     glRasterPos2i(10, 20);
-    for (const char* c = text; *c; c++)
+    for (const char* c = lastAction.c_str(); *c; c++)
         glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, *c);
+
+    // top-left: position, torch, texture state
+    char info[128];
+    snprintf(info, sizeof(info), "pos (%.1f, %.1f, %.1f)  torch: %s  tex: %s",
+             camX, camFloorY + bobOffset, camZ,
+             torchOn ? "ON" : "OFF",
+             texOn   ? "ON" : "OFF");
+    glColor3f(0.8f, 0.8f, 1.0f);
+    glRasterPos2i(10, h - 24);
+    for (const char* c = info; *c; c++)
+        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12, *c);
 
     glPopMatrix();
     glMatrixMode(GL_PROJECTION);
@@ -685,9 +752,9 @@ void OnDisplay() {
         glEnable(GL_LIGHT1);
         GLfloat lpos[] = {camX, camFloorY + bobOffset, camZ, 1.0f};
         GLfloat ldir[] = {
-             sinf(yaw) * cosf(pitch),
-            -sinf(pitch),
-             cosf(yaw) * cosf(pitch)
+            -sinf(yaw) * cosf(pitch),
+             sinf(pitch),
+            -cosf(yaw) * cosf(pitch)
         };
         glLightfv(GL_LIGHT1, GL_POSITION,       lpos);
         glLightfv(GL_LIGHT1, GL_SPOT_DIRECTION, ldir);
@@ -704,8 +771,24 @@ void OnDisplay() {
     // all scene objects
     DrawScene();
 
+    // projectiles
+    DrawProjectiles();
+
+    // transparent pass — lantern windows (depth write off to avoid z-fighting)
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glDepthMask(GL_FALSE);
+    for (int i = 0; i < lanternCount; i++) {
+        glPushMatrix();
+            glTranslatef(lanternPositions[i].x, lanternPositions[i].y, lanternPositions[i].z);
+            DrawLanternWindow();
+        glPopMatrix();
+    }
+    glDepthMask(GL_TRUE);
+    glDisable(GL_BLEND);
+
     // HUD drawn last, before buffer swap
-    DrawHUD(lastAction.c_str());
+    DrawHUD();
 
     glutSwapBuffers();
 }

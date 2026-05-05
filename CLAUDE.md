@@ -37,10 +37,10 @@ CODESTYLE.md          coding and git rules
 |-------|---------|--------|
 | Setup | xszucm00.cpp from template, CMakeLists, imageLoad.h | ✅ done |
 | 1 | Camera state, WASD+arrows, mouse look, bobbing, Page Up/Down, torch, moon, HUD, menu, projectile struct, timer | ✅ done |
-| 2 | Scene objects: tree, bench, lantern, shed, boulder, fence, windmill | ⬜ next |
-| 3 | Bezier terrain + grass texture + checker path | ⬜ |
-| 4 | Menu wired, HUD, lantern window transparency | ⬜ |
-| 5 | Projectile throw with gravity + octahedron draw | ⬜ |
+| 2 | Scene objects: tree, bench, lantern, shed, boulder, fence, windmill | ✅ done |
+| 3 | Bezier terrain + grass texture + checker path | ✅ done |
+| 4 | Menu wired, HUD, lantern window transparency | ✅ done |
+| 5 | Projectile throw with gravity + octahedron draw | ✅ done |
 | 6 | Final cleanup, header, checklist | ⬜ |
 
 Check `TASK.md` for detailed per-phase specs. Mark phases `✅` there as they complete.
@@ -78,7 +78,7 @@ Check `TASK.md` for detailed per-phase specs. Mark phases `✅` there as they co
 
 | Variable | Purpose |
 |----------|---------|
-| `camX/Y/Z` | Camera world position |
+| `camX/Z` | Camera world position (Y driven by camFloorY + bobOffset) |
 | `camFloorY` | Base eye height (Page Up/Down) |
 | `yaw / pitch` | View angles in radians |
 | `bobOffset` | Vertical camera shake added to `camFloorY` |
