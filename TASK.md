@@ -6,11 +6,9 @@ Cílová platforma: macOS, CLion, C++17, OpenGL + GLUT (framework).
 
 ---
 
-## Výchozí bod
+## Výchozí bod ✅
 
-Použij šablonu ze souboru `xstude00.cpp` (je součástí projektu).
-Výstupní soubor pojmenuj `projekt.cpp`.
-Přidej `imageLoad.h` (je součástí projektu, neměň ho).
+Soubor přejmenován na `xszucm00.cpp`. `imageLoad.h` přidán. `CMakeLists.txt` vytvořen.
 
 CMakeLists.txt:
 ```cmake
@@ -24,7 +22,7 @@ target_link_libraries(mpg_projekt "-framework OpenGL" "-framework GLUT")
 
 ---
 
-## FÁZE 1 — Základ scény (commit: "phase1: scene base")
+## FÁZE 1 — Základ scény ✅ (commit: "phase1: scene base")
 
 ### 1A — Globální stav kamery
 

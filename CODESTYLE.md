@@ -1,5 +1,17 @@
 Coding
 Personal Coding Guidelines
+
+Version Control
+Git Commit Rules
+* Command: always use `git commit -s -S` — signs with system credentials, no AI trailer
+* Never add Co-Authored-By or any AI signoff lines
+* Split commits by feature or logical unit — one concern per commit
+* Title format: `type(scope): short imperative description` (conventional commits)
+  - Types: feat, fix, refactor, style, docs, chore
+  - Example: `feat(camera): add WASD movement and mouse look`
+  - Example: `feat(lighting): setup moon and torch spotlights`
+* Description: one line max, plain English, says what the commit does (not why)
+* Keep titles under 72 chars
 Platform Usage
 Claude Web
 * Artifacts: Code only - no explanations in artifact

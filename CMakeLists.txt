@@ -1,0 +1,6 @@
+cmake_minimum_required(VERSION 3.10)
+project(mpg_projekt)
+set(CMAKE_CXX_STANDARD 17)
+add_definitions(-DGL_SILENCE_DEPRECATION)
+add_executable(mpg_projekt xszucm00.cpp)
+target_link_libraries(mpg_projekt "-framework OpenGL" "-framework GLUT")
