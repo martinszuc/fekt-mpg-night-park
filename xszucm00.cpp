@@ -96,6 +96,301 @@ void SpawnProjectile() {
     }
 }
 
+// ─── scene drawing ───────────────────────────────────────────────────────────
+
+void SetMaterial(float r, float g, float b, float shin = 32.0f) {
+    GLfloat amb[]  = {r * 0.2f, g * 0.2f, b * 0.2f, 1.0f};
+    GLfloat diff[] = {r,        g,        b,        1.0f};
+    GLfloat spec[] = {0.3f,     0.3f,     0.3f,     1.0f};
+    glMaterialfv(GL_FRONT, GL_AMBIENT,   amb);
+    glMaterialfv(GL_FRONT, GL_DIFFUSE,   diff);
+    glMaterialfv(GL_FRONT, GL_SPECULAR,  spec);
+    glMaterialf (GL_FRONT, GL_SHININESS, shin);
+}
+
+// box with bottom at Y=0, centred on X/Z; UV coords on every vertex
+void DrawBox(float w, float h, float d) {
+    float hw = w * 0.5f, hd = d * 0.5f;
+    glBegin(GL_QUADS);
+        // front (+Z)
+        glNormal3f(0, 0, 1);
+        glTexCoord2f(0, 0); glVertex3f(-hw, 0, hd);
+        glTexCoord2f(1, 0); glVertex3f( hw, 0, hd);
+        glTexCoord2f(1, 1); glVertex3f( hw, h, hd);
+        glTexCoord2f(0, 1); glVertex3f(-hw, h, hd);
+        // back (-Z)
+        glNormal3f(0, 0, -1);
+        glTexCoord2f(0, 0); glVertex3f( hw, 0, -hd);
+        glTexCoord2f(1, 0); glVertex3f(-hw, 0, -hd);
+        glTexCoord2f(1, 1); glVertex3f(-hw, h, -hd);
+        glTexCoord2f(0, 1); glVertex3f( hw, h, -hd);
+        // right (+X)
+        glNormal3f(1, 0, 0);
+        glTexCoord2f(0, 0); glVertex3f(hw, 0,  hd);
+        glTexCoord2f(1, 0); glVertex3f(hw, 0, -hd);
+        glTexCoord2f(1, 1); glVertex3f(hw, h, -hd);
+        glTexCoord2f(0, 1); glVertex3f(hw, h,  hd);
+        // left (-X)
+        glNormal3f(-1, 0, 0);
+        glTexCoord2f(0, 0); glVertex3f(-hw, 0, -hd);
+        glTexCoord2f(1, 0); glVertex3f(-hw, 0,  hd);
+        glTexCoord2f(1, 1); glVertex3f(-hw, h,  hd);
+        glTexCoord2f(0, 1); glVertex3f(-hw, h, -hd);
+        // top (+Y)
+        glNormal3f(0, 1, 0);
+        glTexCoord2f(0, 0); glVertex3f(-hw, h, -hd);
+        glTexCoord2f(1, 0); glVertex3f( hw, h, -hd);
+        glTexCoord2f(1, 1); glVertex3f( hw, h,  hd);
+        glTexCoord2f(0, 1); glVertex3f(-hw, h,  hd);
+    glEnd();
+}
+
+// cross product of two edges → unit normal
+static void triNormal(float ax, float ay, float az,
+                      float bx, float by, float bz,
+                      float cx, float cy, float cz) {
+    float ex = bx-ax, ey = by-ay, ez = bz-az;
+    float fx = cx-ax, fy = cy-ay, fz = cz-az;
+    float nx = ey*fz - ez*fy;
+    float ny = ez*fx - ex*fz;
+    float nz = ex*fy - ey*fx;
+    float len = sqrtf(nx*nx + ny*ny + nz*nz);
+    if (len > 0.0001f) glNormal3f(nx/len, ny/len, nz/len);
+}
+
+void DrawTree() {
+    // trunk
+    SetMaterial(0.35f, 0.20f, 0.08f);
+    DrawBox(0.4f, 3.0f, 0.4f);
+
+    // canopy — 8-sided cone, base at y=3, apex at y=6
+    SetMaterial(0.10f, 0.40f, 0.10f);
+    const int sides = 8;
+    const float baseR = 1.25f, baseY = 3.0f, apexY = 6.0f;
+    glBegin(GL_TRIANGLES);
+    for (int i = 0; i < sides; i++) {
+        float a0 = (float)i       / sides * 2.0f * (float)M_PI;
+        float a1 = (float)(i + 1) / sides * 2.0f * (float)M_PI;
+        float x0 = cosf(a0) * baseR, z0 = sinf(a0) * baseR;
+        float x1 = cosf(a1) * baseR, z1 = sinf(a1) * baseR;
+        triNormal(x0, baseY, z0,  x1, baseY, z1,  0, apexY, 0);
+        glVertex3f(x0, baseY, z0);
+        glVertex3f(x1, baseY, z1);
+        glVertex3f(0,  apexY, 0);
+    }
+    glEnd();
+}
+
+void DrawBench() {
+    SetMaterial(0.55f, 0.30f, 0.10f);
+    // seat
+    glPushMatrix();
+        glTranslatef(0, 0.7f, 0);
+        DrawBox(2.0f, 0.1f, 0.5f);
+    glPopMatrix();
+    // 4 legs
+    float lx[2] = {-0.85f, 0.85f};
+    float lz[2] = {-0.18f, 0.18f};
+    for (int i = 0; i < 2; i++) for (int j = 0; j < 2; j++) {
+        glPushMatrix();
+            glTranslatef(lx[i], 0, lz[j]);
+            DrawBox(0.08f, 0.7f, 0.08f);
+        glPopMatrix();
+    }
+    // backrest (tilted ~15° backwards)
+    glPushMatrix();
+        glTranslatef(0, 0.75f, -0.22f);
+        glRotatef(-15.0f, 1, 0, 0);
+        glTranslatef(0, 0, 0);
+        DrawBox(2.0f, 0.55f, 0.08f);
+    glPopMatrix();
+}
+
+// lantern positions tracked for transparent window pass in phase 4
+struct LanternPos { float x, y, z; };
+static LanternPos lanternPositions[8];
+static int        lanternCount = 0;
+
+void DrawLantern() {
+    // pole
+    SetMaterial(0.15f, 0.15f, 0.15f, 16.0f);
+    DrawBox(0.08f, 4.0f, 0.08f);
+    // head body
+    glPushMatrix();
+        glTranslatef(0, 4.0f, 0);
+        SetMaterial(0.7f, 0.65f, 0.2f, 64.0f);
+        DrawBox(0.35f, 0.45f, 0.35f);
+        // roof cap
+        SetMaterial(0.15f, 0.15f, 0.15f, 16.0f);
+        glTranslatef(0, 0.45f, 0);
+        DrawBox(0.40f, 0.10f, 0.40f);
+    glPopMatrix();
+    // transparent window drawn separately in OnDisplay (phase 4)
+}
+
+void DrawShed() {
+    // walls
+    SetMaterial(0.60f, 0.45f, 0.25f);
+    DrawBox(4.0f, 2.5f, 3.0f);
+
+    // saddle roof — two rectangular slopes + two triangular gables
+    SetMaterial(0.45f, 0.20f, 0.10f);
+    float bx = 2.3f, by = 2.5f, ridge = 3.5f, rz = 1.5f;
+    glBegin(GL_QUADS);
+        // left slope
+        triNormal(-bx, by, -rz,  -bx, by, rz,  0, ridge, rz);
+        glVertex3f(-bx, by, -rz);
+        glVertex3f(-bx, by,  rz);
+        glVertex3f(  0, ridge,  rz);
+        glVertex3f(  0, ridge, -rz);
+        // right slope
+        triNormal(bx, by, rz,  bx, by, -rz,  0, ridge, -rz);
+        glVertex3f( bx, by,  rz);
+        glVertex3f( bx, by, -rz);
+        glVertex3f(  0, ridge, -rz);
+        glVertex3f(  0, ridge,  rz);
+    glEnd();
+    glBegin(GL_TRIANGLES);
+        // front gable
+        triNormal(-bx, by, rz,  bx, by, rz,  0, ridge, rz);
+        glVertex3f(-bx, by, rz);
+        glVertex3f( bx, by, rz);
+        glVertex3f(  0, ridge, rz);
+        // back gable
+        triNormal( bx, by, -rz,  -bx, by, -rz,  0, ridge, -rz);
+        glVertex3f( bx, by, -rz);
+        glVertex3f(-bx, by, -rz);
+        glVertex3f(  0, ridge, -rz);
+    glEnd();
+}
+
+void DrawBoulder() {
+    SetMaterial(0.45f, 0.42f, 0.38f, 8.0f);
+    // 10 triangles forming an irregular rock
+    static const float v[][3] = {
+        { 0.0f,  1.4f,  0.0f},   // 0 top
+        {-1.0f,  0.0f, -0.5f},   // 1
+        { 0.8f,  0.0f, -0.9f},   // 2
+        { 1.1f,  0.0f,  0.3f},   // 3
+        { 0.2f,  0.0f,  1.1f},   // 4
+        {-0.9f,  0.0f,  0.6f},   // 5
+        {-0.3f,  0.7f, -0.8f},   // 6 mid
+        { 0.9f,  0.6f,  0.5f},   // 7 mid
+        {-0.5f,  0.6f,  0.7f},   // 8 mid
+    };
+    static const int f[][3] = {
+        {0,1,6}, {0,6,2}, {0,2,7}, {0,7,3},
+        {0,3,4}, {0,4,8}, {0,8,5}, {0,5,1},
+        {1,2,6}, {3,7,4},
+    };
+    glBegin(GL_TRIANGLES);
+    for (auto& t : f) {
+        triNormal(v[t[0]][0], v[t[0]][1], v[t[0]][2],
+                  v[t[1]][0], v[t[1]][1], v[t[1]][2],
+                  v[t[2]][0], v[t[2]][1], v[t[2]][2]);
+        for (int k = 0; k < 3; k++)
+            glVertex3f(v[t[k]][0], v[t[k]][1], v[t[k]][2]);
+    }
+    glEnd();
+}
+
+void DrawFence(int count, float spacing) {
+    SetMaterial(0.60f, 0.45f, 0.25f);
+    for (int i = 0; i < count; i++) {
+        glPushMatrix();
+            glTranslatef(i * spacing, 0, 0);
+            DrawBox(0.10f, 1.2f, 0.10f);
+        glPopMatrix();
+    }
+    // horizontal rails
+    glPushMatrix();
+        glTranslatef((count - 1) * spacing * 0.5f - 0.05f, 0.9f, 0);
+        DrawBox((count - 1) * spacing, 0.06f, 0.06f);
+    glPopMatrix();
+    glPushMatrix();
+        glTranslatef((count - 1) * spacing * 0.5f - 0.05f, 0.45f, 0);
+        DrawBox((count - 1) * spacing, 0.06f, 0.06f);
+    glPopMatrix();
+}
+
+void DrawWindmill() {
+    // central pole
+    SetMaterial(0.50f, 0.40f, 0.25f);
+    DrawBox(0.30f, 5.0f, 0.30f);
+
+    // 4 blades rotating around Z axis at the top
+    SetMaterial(0.80f, 0.75f, 0.55f, 16.0f);
+    for (int i = 0; i < 4; i++) {
+        glPushMatrix();
+            glTranslatef(0, 5.0f, 0.18f);
+            glRotatef(windmillAngle + i * 90.0f, 0, 0, 1);
+            glTranslatef(0, 1.0f, 0);
+            DrawBox(0.15f, 2.0f, 0.05f);
+        glPopMatrix();
+    }
+}
+
+// ─── scene assembly ──────────────────────────────────────────────────────────
+
+void DrawScene() {
+    // trees
+    static const float treePos[][2] = {
+        {-5, -5}, {8, -3}, {-10, 5}, {3, 10}, {-2, 15}
+    };
+    for (auto& p : treePos) {
+        glPushMatrix();
+            glTranslatef(p[0], 0, p[1]);
+            DrawTree();
+        glPopMatrix();
+    }
+
+    // benches
+    glPushMatrix();
+        glTranslatef(0, 0, 0);
+        DrawBench();
+    glPopMatrix();
+    glPushMatrix();
+        glTranslatef(6, 0, -2);
+        glRotatef(45, 0, 1, 0);
+        DrawBench();
+    glPopMatrix();
+
+    // lanterns — register positions for transparent window pass
+    lanternCount = 0;
+    static const float lanternPos[][2] = {{4, 0}, {-4, 3}};
+    for (auto& p : lanternPos) {
+        glPushMatrix();
+            glTranslatef(p[0], 0, p[1]);
+            DrawLantern();
+            if (lanternCount < 8) {
+                lanternPositions[lanternCount++] = {p[0], 0, p[1]};
+            }
+        glPopMatrix();
+    }
+
+    // shed
+    glPushMatrix();
+        glTranslatef(12, 0, -8);
+        DrawShed();
+    glPopMatrix();
+
+    // boulders
+    glPushMatrix(); glTranslatef(-8, 0, 8);  DrawBoulder(); glPopMatrix();
+    glPushMatrix(); glTranslatef( 2, 0, -10); DrawBoulder(); glPopMatrix();
+
+    // fence row
+    glPushMatrix();
+        glTranslatef(-6, 0, -15);
+        DrawFence(10, 1.2f);
+    glPopMatrix();
+
+    // windmill
+    glPushMatrix();
+        glTranslatef(0, 0, -20);
+        DrawWindmill();
+    glPopMatrix();
+}
+
 // ─── GLUT callbacks ──────────────────────────────────────────────────────────
 
 void OnReshape(int w, int h) {
@@ -327,23 +622,18 @@ void OnDisplay() {
         glDisable(GL_LIGHT1);
     }
 
-    // placeholder ground — replaced by Bezier terrain in phase 3
-    {
-        GLfloat amb[]  = {0.05f, 0.15f, 0.05f, 1.0f};
-        GLfloat diff[] = {0.15f, 0.40f, 0.15f, 1.0f};
-        GLfloat spec[] = {0.05f, 0.05f, 0.05f, 1.0f};
-        glMaterialfv(GL_FRONT, GL_AMBIENT,   amb);
-        glMaterialfv(GL_FRONT, GL_DIFFUSE,   diff);
-        glMaterialfv(GL_FRONT, GL_SPECULAR,  spec);
-        glMaterialf (GL_FRONT, GL_SHININESS, 4.0f);
-        glNormal3f(0.0f, 1.0f, 0.0f);
-        glBegin(GL_QUADS);
-            glVertex3f(-100.0f, 0.0f,  100.0f);
-            glVertex3f( 100.0f, 0.0f,  100.0f);
-            glVertex3f( 100.0f, 0.0f, -100.0f);
-            glVertex3f(-100.0f, 0.0f, -100.0f);
-        glEnd();
-    }
+    // ground plane (placeholder until Bezier terrain in phase 3)
+    SetMaterial(0.15f, 0.40f, 0.15f, 4.0f);
+    glNormal3f(0.0f, 1.0f, 0.0f);
+    glBegin(GL_QUADS);
+        glVertex3f(-100.0f, 0.0f,  100.0f);
+        glVertex3f( 100.0f, 0.0f,  100.0f);
+        glVertex3f( 100.0f, 0.0f, -100.0f);
+        glVertex3f(-100.0f, 0.0f, -100.0f);
+    glEnd();
+
+    // all scene objects
+    DrawScene();
 
     // HUD drawn last, before buffer swap
     DrawHUD(lastAction.c_str());

@@ -256,7 +256,7 @@ if(torchOn) {
 
 ---
 
-## FÁZE 2 — Objekty scény (commit: "phase2: scene objects")
+## FÁZE 2 — Objekty scény ✅ (commit: "phase2: scene objects")
 
 ### 2A — Pomocné funkce materiálů
 
