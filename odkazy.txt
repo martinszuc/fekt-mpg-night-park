@@ -1,0 +1,18 @@
+Odkazy pro další informace o OpenGL a tutoriály
+Root.cz
+Spousta příkladů pro práci s OpenGL a knihovnou GLUT (některé příklady a text byly použity i při vytváření
+našich cvičení):
+http://www.root.cz/serialy/graficka-knihovna-opengl/ (cz)
+Nate Robins
+Obsahuje knihovny pro stažení, dokumentaci a spustitelné ukázky a zdrojové kódy pro
+Windows/Mac/Linux:
+http://user.xmission.com/~nate/opengl.html (en)
+Nehe OpenGL tutoriály
+Spousta příkladů pro práci s OpenGL (bez použití GLUT knihoven):
+http://nehe.ceske-hry.cz/tut_obsah.php (cz)
+http://nehe.gamedev.net/ (en)
+Zprovoznění OpenGL ve Visual Studiu
+1. pravým klikem na solution
+2. Manage NuGet Packages...
+3. vyhledání a nainstalování NuGet balíčku nupengl.core (ten nainstaluje freeglut)
+4. #include <GL\glut.h>
