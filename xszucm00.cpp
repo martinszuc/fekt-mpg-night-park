@@ -1,38 +1,38 @@
 /*
- * MPC-MPG 2025/26 - Semestralni projekt
+ * MPC-MPG 2025/26 - Semester project
  *
- * Autor:       Martin Szüč
- * Student ID:  (doplň)
+ * Author:      Martin Szüč
+ * Student ID:  (fill in)
  * Email:       xszucm00@vut.cz
  *
- * Nazev projektu: Nocni park
+ * Project:     Night Park
  *
- * Seznam vypracovanych ukolu:
- *   1.  Modelovani objektu (5+ vlastnich)          3 b
- *   2.  Animace (vetyrnik)                         1 b
- *   3.  Osvetleni + normaly                        1 b
- *   4.  Volny pohyb (mys + WASD/sipky)             1 b
- *   5.  Menu (6 polozek)                           2 b
- *   6.  Vypis textu (HUD)                          2 b
- *   7.  Rucni svitilna (klavesa R)                 2 b
- *   10. Stoupani/klesani (Page Up/Down)            1 b
- *   12. Simulace kroku (camera bobbing)            2 b
- *   14. Pruhlednost (okno lucerny)                 1 b
- *   16. Texturovani (grass.bmp + checker)          2 b
- *   17. Bezierovy platy (teren)                    2 b
- *   11. Hod predmetu (Space + gravitace)           2 b
- *                                              CELKEM: 24 b
+ * Completed tasks:
+ *   1.  Object modelling (5+ custom objects)       3 pts
+ *   2.  Animation (windmill)                       1 pt
+ *   3.  Lighting + normals                         1 pt
+ *   4.  Free movement (mouse + WASD/arrows)        1 pt
+ *   5.  Menu (6 items)                             2 pts
+ *   6.  Text output (HUD)                          2 pts
+ *   7.  Handheld torch (key R)                     2 pts
+ *   10. Ascent/descent (Page Up/Down)              1 pt
+ *   12. Footstep simulation (camera bobbing)       2 pts
+ *   14. Transparency (lantern window)              1 pt
+ *   16. Texturing (grass.bmp + checker)            2 pts
+ *   17. Bezier patches (terrain)                   2 pts
+ *   11. Object throw (Space + gravity)             2 pts
+ *                                           TOTAL: 24 pts
  *
- * Ovladani:
- *   W/S/A/D nebo sipky  pohyb
- *   mys (drag)          rozhlizeni
- *   R                   svitilna ON/OFF
- *   Space               hod predmetu
- *   Page Up/Down        vyska kamery
- *   prave tlacitko mys  menu
- *   Esc                 konec
+ * Controls:
+ *   W/S/A/D or arrows   move
+ *   mouse drag          look around
+ *   R                   torch ON/OFF
+ *   Space               throw object
+ *   Page Up/Down        camera height
+ *   right mouse button  menu
+ *   Esc                 quit
  *
- * Konfigurace: macOS 14, CLion, OpenGL/GLUT (framework)
+ * Platform: macOS 14, CLion, OpenGL/GLUT (framework)
  */
 
 #include "imageLoad.h"
@@ -84,7 +84,7 @@ void SpawnProjectile() {
         p.vy =  sinf(pitch) * spd;
         p.vz = -cosf(yaw) * cosf(pitch) * spd;
         p.active = true;
-        lastAction = "hod predmetu";
+        lastAction = "throw object";
         break;
     }
 }
@@ -188,8 +188,8 @@ void OnTimer(int) {
 void OnSpecial(int key, int, int) {
     if (key == GLUT_KEY_UP)   keys[GLUT_KEY_UP   + 200] = true;
     if (key == GLUT_KEY_DOWN) keys[GLUT_KEY_DOWN + 200] = true;
-    if (key == GLUT_KEY_PAGE_UP)   { camFloorY += 0.5f; if (camFloorY >  30.0f) camFloorY =  30.0f; lastAction = "kamera nahoru"; }
-    if (key == GLUT_KEY_PAGE_DOWN) { camFloorY -= 0.5f; if (camFloorY < -5.0f)  camFloorY = -5.0f;  lastAction = "kamera dolu";   }
+    if (key == GLUT_KEY_PAGE_UP)   { camFloorY += 0.5f; if (camFloorY >  30.0f) camFloorY =  30.0f; lastAction = "camera up"; }
+    if (key == GLUT_KEY_PAGE_DOWN) { camFloorY -= 0.5f; if (camFloorY < -5.0f)  camFloorY = -5.0f;  lastAction = "camera down"; }
     glutPostRedisplay();
 }
 
@@ -225,7 +225,7 @@ void OnKeyboard(unsigned char key, int, int) {
     if (key == 27) exit(0);
     if (key == 'r' || key == 'R') {
         torchOn = !torchOn;
-        lastAction = torchOn ? "svitilna ON" : "svitilna OFF";
+        lastAction = torchOn ? "torch ON" : "torch OFF";
     }
     if (key == ' ') SpawnProjectile();
 }
@@ -241,15 +241,15 @@ void OnMenu(int val) {
         case 1:
             camX = 0; camFloorY = 1.7f; camZ = 20.0f;
             yaw = 0; pitch = 0;
-            lastAction = "reset kamery";
+            lastAction = "camera reset";
             break;
-        case 2: animOn = !animOn; lastAction = animOn ? "animace ON" : "animace OFF"; break;
-        case 3: texOn  = !texOn;  lastAction = texOn  ? "textury ON" : "textury OFF"; break;
+        case 2: animOn = !animOn; lastAction = animOn ? "animation ON" : "animation OFF"; break;
+        case 3: texOn  = !texOn;  lastAction = texOn  ? "textures ON"  : "textures OFF";  break;
         case 4:
-            if (glIsEnabled(GL_LIGHT0)) { glDisable(GL_LIGHT0); lastAction = "svetlo OFF"; }
-            else                        { glEnable (GL_LIGHT0); lastAction = "svetlo ON";  }
+            if (glIsEnabled(GL_LIGHT0)) { glDisable(GL_LIGHT0); lastAction = "light OFF"; }
+            else                        { glEnable (GL_LIGHT0); lastAction = "light ON";  }
             break;
-        case 5: torchOn = !torchOn; lastAction = torchOn ? "svitilna ON" : "svitilna OFF"; break;
+        case 5: torchOn = !torchOn; lastAction = torchOn ? "torch ON" : "torch OFF"; break;
         case 6: exit(0);
     }
     glutPostRedisplay();
@@ -351,7 +351,7 @@ int main(int argc, char* argv[]) {
     glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);
     glutInitWindowSize(1024, 768);
     glutInitWindowPosition(100, 100);
-    glutCreateWindow("MPC-MPG 2025/26 — Nocni park | xszucm00");
+    glutCreateWindow("MPC-MPG 2025/26 — Night Park | xszucm00");
 
     glutDisplayFunc(OnDisplay);
     glutReshapeFunc(OnReshape);
@@ -364,12 +364,12 @@ int main(int argc, char* argv[]) {
     glutSpecialUpFunc(OnSpecialUp);
 
     int menu = glutCreateMenu(OnMenu);
-    glutAddMenuEntry("Reset kamery",    1);
-    glutAddMenuEntry("Animace ON/OFF",  2);
-    glutAddMenuEntry("Textury ON/OFF",  3);
-    glutAddMenuEntry("Svetlo ON/OFF",   4);
-    glutAddMenuEntry("Svitilna ON/OFF", 5);
-    glutAddMenuEntry("Konec",           6);
+    glutAddMenuEntry("Reset camera",     1);
+    glutAddMenuEntry("Animation ON/OFF", 2);
+    glutAddMenuEntry("Textures ON/OFF",  3);
+    glutAddMenuEntry("Light ON/OFF",     4);
+    glutAddMenuEntry("Torch ON/OFF",     5);
+    glutAddMenuEntry("Exit",             6);
     glutAttachMenu(GLUT_RIGHT_BUTTON);
 
     OnInit();
