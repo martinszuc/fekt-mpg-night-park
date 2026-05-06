@@ -51,9 +51,11 @@ jobs:
           tag = sys.argv[1]
           readme = pathlib.Path("README.md")
           text = readme.read_text()
-          block = (
+
+          # ── latest block ──────────────────────────────────────────────────
+          latest = (
               "<!-- SCREENSHOTS_START -->\n"
-              f"### Screenshots — {tag}\n\n"
+              f"### Latest — {tag}\n\n"
               "| Scene 0 | Scene 1 | Scene 2 |\n"
               "|---------|---------|----------|\n"
               "| ![scene0](screenshots/latest/scene_0.webp) "
@@ -61,14 +63,29 @@ jobs:
               "| ![scene2](screenshots/latest/scene_2.webp) |\n\n"
               "<!-- SCREENSHOTS_END -->"
           )
-          if "<!-- SCREENSHOTS_START -->" in text:
-              text = re.sub(
-                  r"<!-- SCREENSHOTS_START -->.*?<!-- SCREENSHOTS_END -->",
-                  block, text, flags=re.DOTALL
-              )
-          else:
-              text = text.replace("![Screenshot](assets/screenshot.png)\n\n", "")
-              text = text.replace("# MPC-MPG", block + "\n\n# MPC-MPG", 1)
+          text = re.sub(
+              r"<!-- SCREENSHOTS_START -->.*?<!-- SCREENSHOTS_END -->",
+              latest, text, flags=re.DOTALL
+          )
+
+          # ── history table: prepend a new row just after the header row ───
+          new_row = (
+              f"| [{tag}](screenshots/{tag}/) "
+              f"| ![s0](screenshots/{tag}/scene_0.webp) "
+              f"| ![s1](screenshots/{tag}/scene_1.webp) "
+              f"| ![s2](screenshots/{tag}/scene_2.webp) |\n"
+          )
+          header = (
+              "<!-- HISTORY_START -->\n"
+              "| Version | Scene 0 | Scene 1 | Scene 2 |\n"
+              "|---------|---------|---------|---------|"
+          )
+          text = text.replace(
+              header,
+              header + "\n" + new_row.rstrip("\n"),
+              1
+          )
+
           readme.write_text(text)
           EOF
 

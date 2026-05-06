@@ -3,6 +3,11 @@
 <!-- SCREENSHOTS_START -->
 <!-- SCREENSHOTS_END -->
 
+<!-- HISTORY_START -->
+| Version | Scene 0 | Scene 1 | Scene 2 |
+|---------|---------|---------|---------|
+<!-- HISTORY_END -->
+
 ## Přehled
 
 Semestrální projekt z předmětu MPC-MPG (2025/26).
