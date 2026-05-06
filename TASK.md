@@ -632,9 +632,20 @@ Zabalit do `xlogin_mpg_projekt.zip`.
 
 ---
 
-## Additional improvement phases (post-submission)
+## Additional improvement phases (post-submission) ✅ all done — v0.1.1
 
-These phases are not required for grading. They address real visual and code-quality gaps found during review.
+These phases were not required for grading. All implemented and shipped in v0.1.1.
+
+### Summary of what changed
+
+| Phase | Commit | What |
+|-------|--------|------|
+| F | `9e5c6a7` | `DrawScene` side effect removed — lantern positions are now `constexpr kLanterns[]` in `scene.h`; `debugTick` guarded by `#ifdef DEBUG_CAM` |
+| E | `b6b0b68` | `dt` derived from `glutGet(GLUT_ELAPSED_TIME)`, clamped to 50 ms — movement is now framerate-independent |
+| B | `d76436e` | `GL_EXP2` fog (density 0.018, dark blue-black); clear color matched to fog color to eliminate horizon seam |
+| A | `fd01bb6` | `GL_LIGHT2`/`GL_LIGHT3` warm-yellow point lights at each lantern head (Y=4.2); toggleable via new "Lanterns ON/OFF" menu entry |
+| D | `9cbf21b` | Trees replaced with `TreeSpec` array — each has individual scale and yaw so no two trees look identical |
+| C | `6716f1d` | `DrawSky()` draws 200 deterministic stars (`srand(42)`) as `GL_POINTS` + moon billboard quad; fog disabled during sky render then re-enabled |
 
 ---
 

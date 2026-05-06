@@ -10,7 +10,7 @@ Semester project for **MPC-MPG 2025/26** at VUT FEKT.
 First-person walk through a night park. Target: **24 points**.
 Platform: **macOS 14, CLion, C++17, OpenGL (legacy) + GLUT framework**.
 
-Working file: `xszucm00.cpp` — this is the only source file, never rename it.
+Working files: `xszucm00.cpp` (GLUT callbacks + main) and `scene.h` (all scene globals, structs, draw functions). `xszucm00.cpp` must never be renamed — it is the submission file. `scene.h` is the one permitted extra header.
 Build: `cmake -B build && cmake --build build`, then run from project root: `./build/mpg_projekt`.
 
 ---
@@ -18,10 +18,11 @@ Build: `cmake -B build && cmake --build build`, then run from project root: `./b
 ## Repository layout
 
 ```
-xszucm00.cpp          main source (all code lives here)
+xszucm00.cpp          GLUT callbacks + main (thin entry point, ~280 lines)
+scene.h               all scene globals, structs, and Draw* functions (~560 lines)
 imageLoad.h           BMP/TGA loader — do not modify
 CMakeLists.txt        build config
-VERSION               plain-text version (e.g. 0.1.0) — written by release CI from tag
+VERSION               plain-text version (e.g. 0.1.1) — written by release CI from tag
 assets/
   textures/
     grass.bmp         512×512 grass texture (converted from JPEG)
@@ -49,8 +50,15 @@ CODESTYLE.md          coding and git rules
 | 4 | Menu wired, HUD, lantern window transparency | ✅ done |
 | 5 | Projectile throw with gravity + octahedron draw | ✅ done |
 | 6 | Final cleanup, header, checklist | ✅ done |
+| Refactor | Split into xszucm00.cpp + scene.h | ✅ done |
+| Post A | Lantern point lights (GL_LIGHT2/3, warm yellow, attenuation) | ✅ done |
+| Post B | Atmospheric fog (GL_EXP2, density 0.018, clear color matched) | ✅ done |
+| Post C | Night sky: 200 stars + moon billboard quad | ✅ done |
+| Post D | Tree variation: per-tree scale and yaw in TreeSpec array | ✅ done |
+| Post E | Real delta-time via glutElapsedTime, 50ms clamp | ✅ done |
+| Post F | DrawScene side-effect removed, kLanterns constexpr, debug log guarded | ✅ done |
 
-Check `TASK.md` for detailed per-phase specs. Mark phases `✅` there as they complete.
+Check `TASK.md` for detailed per-phase specs.
 
 ---
 
@@ -64,8 +72,9 @@ Check `TASK.md` for detailed per-phase specs. Mark phases `✅` there as they co
 - C++17, no external libraries beyond OpenGL/GLUT + imageLoad.h
 - No `glutSolidSphere`, no GLU quadrics — all geometry via vertex arrays / `glBegin`
 - Every drawn object needs correct normals for lighting
-- Lighting: `GL_LIGHT0` = moon (directional), `GL_LIGHT1` = torch (spotlight, toggle R)
-- Draw order: opaque objects → transparent objects (depth mask off) → HUD
+- Lighting: `GL_LIGHT0` = moon (directional), `GL_LIGHT1` = torch (spotlight, toggle R), `GL_LIGHT2/3` = lantern point lights (toggle via menu)
+- Draw order: sky (no depth) → opaque objects → transparent objects (depth mask off) → HUD
+- Fog is always on; `DrawSky` disables it for star/moon rendering then re-enables it
 - Textures live in `assets/textures/`, referenced by relative path from project root
 
 ### Git commits
@@ -81,22 +90,26 @@ Check `TASK.md` for detailed per-phase specs. Mark phases `✅` there as they co
 
 ---
 
-## Key globals (phase 1)
+## Key globals
 
-| Variable | Purpose |
-|----------|---------|
-| `camX/Z` | Camera world position (Y driven by camFloorY + bobOffset) |
-| `camFloorY` | Base eye height (Page Up/Down) |
-| `yaw / pitch` | View angles in radians |
-| `bobOffset` | Vertical camera shake added to `camFloorY` |
-| `torchOn` | Whether GL_LIGHT1 spotlight is active |
-| `animOn` | Whether windmill rotates |
-| `windmillAngle` | Current windmill rotation angle |
-| `texOn` | Texture enable toggle |
-| `texGrass / texChecker` | OpenGL texture IDs |
-| `lastAction` | String shown in HUD bottom-left |
-| `projectiles[10]` | Active thrown objects |
-| `ciScenario` | -1 = normal mode; 0-2 = headless CI render then exit |
+All globals are defined in `scene.h` (included once by `xszucm00.cpp`). `ciScenario` and `SaveBMP` live in `xszucm00.cpp`.
+
+| Variable | File | Purpose |
+|----------|------|---------|
+| `camX/Z` | scene.h | Camera world position (Y driven by camFloorY + bobOffset) |
+| `camFloorY` | scene.h | Base eye height (Page Up/Down) |
+| `yaw / pitch` | scene.h | View angles in radians |
+| `bobOffset` | scene.h | Vertical camera shake added to `camFloorY` |
+| `torchOn` | scene.h | Whether GL_LIGHT1 spotlight is active |
+| `animOn` | scene.h | Whether windmill rotates |
+| `windmillAngle` | scene.h | Current windmill rotation angle |
+| `texOn` | scene.h | Texture enable toggle |
+| `texGrass / texChecker` | scene.h | OpenGL texture IDs |
+| `lastAction` | scene.h | String shown in HUD bottom-left |
+| `projectiles[10]` | scene.h | Active thrown objects |
+| `kLanterns / kLanternCount` | scene.h | `constexpr` lantern world positions (used by DrawScene, OnDisplay, and lantern lights) |
+| `starVerts / starCount` | scene.h | Pre-generated star point cloud for DrawSky |
+| `ciScenario` | xszucm00.cpp | -1 = normal mode; 0-2 = headless CI render then exit |
 
 ---
 
@@ -125,8 +138,8 @@ Hardcoded camera positions in `xszucm00.cpp` (yaw/pitch in radians):
 To add or change scenarios: edit the `scenarios[]` array in `main()` inside `xszucm00.cpp`.
 
 ### Debug camera logger
-- **Automatic**: prints `[CAM]` line to stdout every 5 seconds while running
-- **On demand**: press `P` for an instant position dump
+- **Automatic**: prints `[CAM]` every 5 s — only when built with `-DDEBUG_CAM` (guarded by `#ifdef DEBUG_CAM`)
+- **On demand**: press `P` for an instant position dump (always available)
 - Output format: `[CAM] x=  y=  z=  yaw= deg  pitch= deg`
 - Use this to find new viewpoints, then hardcode them as CI scenarios
 
