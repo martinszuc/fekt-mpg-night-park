@@ -1,11 +1,20 @@
 # MPC-MPG Projekt — Noční park
 
 <!-- SCREENSHOTS_START -->
+### Latest — v0.1.0
+
+![scene0](screenshots/latest/scene_0.webp)
+
+![scene1](screenshots/latest/scene_1.webp)
+
+![scene2](screenshots/latest/scene_2.webp)
+
 <!-- SCREENSHOTS_END -->
 
 <!-- HISTORY_START -->
 | Version | Scene 0 | Scene 1 | Scene 2 |
 |---------|---------|---------|---------|
+| [v0.1.0](screenshots/v0.1.0/) | <img src="screenshots/v0.1.0/scene_0.webp" width="200"> | <img src="screenshots/v0.1.0/scene_1.webp" width="200"> | <img src="screenshots/v0.1.0/scene_2.webp" width="200"> |
 <!-- HISTORY_END -->
 
 ## Přehled
