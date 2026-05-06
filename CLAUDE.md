@@ -41,7 +41,7 @@ CODESTYLE.md          coding and git rules
 | 3 | Bezier terrain + grass texture + checker path | ✅ done |
 | 4 | Menu wired, HUD, lantern window transparency | ✅ done |
 | 5 | Projectile throw with gravity + octahedron draw | ✅ done |
-| 6 | Final cleanup, header, checklist | ⬜ |
+| 6 | Final cleanup, header, checklist | ✅ done |
 
 Check `TASK.md` for detailed per-phase specs. Mark phases `✅` there as they complete.
 
