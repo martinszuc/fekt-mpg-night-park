@@ -29,7 +29,6 @@ assets/
 screenshots/
   latest/             scene_0..2.webp — overwritten on every release
   v0.1.0/            archived WebP screenshots per release tag
-TASK.md               phase-by-phase implementation plan with ✅ progress markers
 README.md             project design notes + auto-updated screenshot sections
 CODESTYLE.md          coding and git rules
 .github/workflows/
@@ -57,8 +56,6 @@ CODESTYLE.md          coding and git rules
 | Post D | Tree variation: per-tree scale and yaw in TreeSpec array | ✅ done |
 | Post E | Real delta-time via glutElapsedTime, 50ms clamp | ✅ done |
 | Post F | DrawScene side-effect removed, kLanterns constexpr, debug log guarded | ✅ done |
-
-Check `TASK.md` for detailed per-phase specs.
 
 ---
 
