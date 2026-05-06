@@ -135,7 +135,12 @@ void OnInit() {
 }
 
 void OnTimer(int) {
-    const float dt    = 0.016f;
+    static int lastMs = 0;
+    int nowMs   = glutGet(GLUT_ELAPSED_TIME);
+    float dt    = (lastMs == 0) ? 0.016f : (nowMs - lastMs) * 0.001f;
+    if (dt > 0.05f) dt = 0.05f; // clamp: ignore stalls longer than 50ms
+    lastMs = nowMs;
+
     const float speed = 5.0f;
     float dx = 0.0f, dz = 0.0f;
 
