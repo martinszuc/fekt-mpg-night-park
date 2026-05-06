@@ -1,6 +1,7 @@
 # MPC-MPG Projekt — Noční park
 
-![Screenshot](assets/screenshot.png)
+<!-- SCREENSHOTS_START -->
+<!-- SCREENSHOTS_END -->
 
 ## Přehled
 

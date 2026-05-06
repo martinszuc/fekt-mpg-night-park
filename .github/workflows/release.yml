@@ -1,0 +1,96 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*.*.*']
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  release:
+    name: Build, screenshot, publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            cmake build-essential \
+            libgl1-mesa-dev libglu1-mesa-dev \
+            freeglut3-dev \
+            xvfb imagemagick
+
+      - name: Build
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build --parallel
+
+      - name: Render screenshot scenarios
+        run: |
+          Xvfb :99 -screen 0 1280x720x24 &
+          sleep 1
+          TAG="${GITHUB_REF_NAME}"
+          mkdir -p "screenshots/latest" "screenshots/$TAG"
+          for i in 0 1 2; do
+            DISPLAY=:99 LIBGL_ALWAYS_SOFTWARE=1 ./build/mpg_projekt --ci-scenario $i
+            test -s "ci_shot_${i}.bmp"
+            convert "ci_shot_${i}.bmp" "screenshots/latest/scene_${i}.webp"
+            cp "screenshots/latest/scene_${i}.webp" "screenshots/${TAG}/scene_${i}.webp"
+            rm "ci_shot_${i}.bmp"
+          done
+
+      - name: Update README screenshot section
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          python3 - "$TAG" <<'EOF'
+          import sys, re, pathlib
+          tag = sys.argv[1]
+          readme = pathlib.Path("README.md")
+          text = readme.read_text()
+          block = (
+              "<!-- SCREENSHOTS_START -->\n"
+              f"### Screenshots — {tag}\n\n"
+              "| Scene 0 | Scene 1 | Scene 2 |\n"
+              "|---------|---------|----------|\n"
+              "| ![scene0](screenshots/latest/scene_0.webp) "
+              "| ![scene1](screenshots/latest/scene_1.webp) "
+              "| ![scene2](screenshots/latest/scene_2.webp) |\n\n"
+              "<!-- SCREENSHOTS_END -->"
+          )
+          if "<!-- SCREENSHOTS_START -->" in text:
+              text = re.sub(
+                  r"<!-- SCREENSHOTS_START -->.*?<!-- SCREENSHOTS_END -->",
+                  block, text, flags=re.DOTALL
+              )
+          else:
+              text = text.replace("![Screenshot](assets/screenshot.png)\n\n", "")
+              text = text.replace("# MPC-MPG", block + "\n\n# MPC-MPG", 1)
+          readme.write_text(text)
+          EOF
+
+      - name: Commit screenshots and README
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add screenshots/ README.md
+          git diff --staged --quiet || \
+            git commit -m "chore(ci): screenshots for $TAG [skip ci]"
+          git push origin HEAD:main
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          VERSION=$(cat VERSION | tr -d '[:space:]')
+          gh release create "$TAG" \
+            screenshots/latest/scene_0.webp \
+            screenshots/latest/scene_1.webp \
+            screenshots/latest/scene_2.webp \
+            --title "Night Park $TAG" \
+            --notes "Version $VERSION — automated render of 3 scene viewpoints."

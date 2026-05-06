@@ -40,7 +40,9 @@
 #define _USE_MATH_DEFINES
 #include <cmath>
 #include <cstdio>
+#include <cstdint>
 #include <string>
+#include <vector>
 #ifndef M_PI
 #  define M_PI 3.14159265358979323846
 #endif
@@ -49,6 +51,10 @@
 #else
 #  include <GL/glut.h>
 #endif
+
+// ─── CI screenshot mode ───────────────────────────────────────────────────────
+
+static int ciScenario = -1; // set via --ci-scenario N; -1 = normal interactive mode
 
 // ─── camera state ────────────────────────────────────────────────────────────
 
@@ -749,6 +755,40 @@ void DrawHUD() {
     glEnable(GL_LIGHTING);
 }
 
+// ─── CI screenshot helpers ────────────────────────────────────────────────────
+
+static void SaveBMP(const char* path, int w, int h) {
+    std::vector<uint8_t> px(w * h * 3);
+    glReadBuffer(GL_BACK);
+    glReadPixels(0, 0, w, h, GL_RGB, GL_UNSIGNED_BYTE, px.data());
+
+    int stride = (w * 3 + 3) & ~3;
+    int dataSize = stride * h;
+
+    uint8_t hdr[54] = {};
+    auto wl = [&](int o, uint32_t v){ memcpy(hdr+o, &v, 4); };
+    auto ws = [&](int o, uint16_t v){ memcpy(hdr+o, &v, 2); };
+    hdr[0]='B'; hdr[1]='M';
+    wl(2,  54 + dataSize); wl(10, 54);
+    wl(14, 40); wl(18, (uint32_t)w); wl(22, (uint32_t)h);
+    ws(26, 1);  ws(28, 24);
+    wl(34, (uint32_t)dataSize);
+
+    FILE* f = fopen(path, "wb");
+    if (!f) { fprintf(stderr, "SaveBMP: cannot open %s\n", path); return; }
+    fwrite(hdr, 1, 54, f);
+    std::vector<uint8_t> row(stride, 0);
+    for (int y = 0; y < h; y++) {
+        for (int x = 0; x < w; x++) {
+            row[x*3+0] = px[(y*w+x)*3+2]; // R→B
+            row[x*3+1] = px[(y*w+x)*3+1]; // G
+            row[x*3+2] = px[(y*w+x)*3+0]; // B→R
+        }
+        fwrite(row.data(), 1, stride, f);
+    }
+    fclose(f);
+}
+
 // ─── display ─────────────────────────────────────────────────────────────────
 
 void OnDisplay() {
@@ -811,6 +851,14 @@ void OnDisplay() {
     // HUD drawn last, before buffer swap
     DrawHUD();
 
+    if (ciScenario >= 0) {
+        char path[64];
+        snprintf(path, sizeof(path), "ci_shot_%d.bmp", ciScenario);
+        SaveBMP(path, glutGet(GLUT_WINDOW_WIDTH), glutGet(GLUT_WINDOW_HEIGHT));
+        glutSwapBuffers();
+        exit(0);
+    }
+
     glutSwapBuffers();
 }
 
@@ -843,6 +891,26 @@ int main(int argc, char* argv[]) {
     glutAttachMenu(GLUT_RIGHT_BUTTON);
 
     OnInit();
+
+    // Parse --ci-scenario N and apply the hardcoded camera for that viewpoint
+    for (int i = 1; i < argc - 1; i++) {
+        if (strcmp(argv[i], "--ci-scenario") == 0) {
+            ciScenario = atoi(argv[i + 1]);
+            struct { float x, floorY, z, yaw, pitch; } scenarios[] = {
+                { 6.56f, 1.70f,  6.69f, 0.07994f, 0.02007f }, // scene 0: bench + lanterns area
+                { 5.02f, 1.70f, 17.15f, 0.79013f, 0.00506f }, // scene 1: entry angle, windmill side
+                { 1.75f, 1.70f,  5.37f, 0.14993f, 0.02496f }, // scene 2: deep park, shed visible
+            };
+            if (ciScenario >= 0 && ciScenario < 3) {
+                camX      = scenarios[ciScenario].x;
+                camFloorY = scenarios[ciScenario].floorY;
+                camZ      = scenarios[ciScenario].z;
+                yaw       = scenarios[ciScenario].yaw;
+                pitch     = scenarios[ciScenario].pitch;
+            }
+        }
+    }
+
     glutTimerFunc(16, OnTimer, 0);
 
     glutMainLoop();
