@@ -117,6 +117,14 @@ void OnInit() {
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS);
 
+    // atmospheric fog — dark blue-black, fades objects beyond ~40 units
+    GLfloat fogColor[] = {0.03f, 0.03f, 0.10f, 1.0f};
+    glEnable(GL_FOG);
+    glFogfv(GL_FOG_COLOR,   fogColor);
+    glFogi (GL_FOG_MODE,    GL_EXP2);
+    glFogf (GL_FOG_DENSITY, 0.018f);
+    glHint (GL_FOG_HINT,    GL_NICEST);
+
     // procedural checker texture (64×64)
     unsigned char checker[64 * 64 * 3];
     for (int i = 0; i < 64; i++)
@@ -272,7 +280,7 @@ void OnMenu(int val) {
 // ─── display ─────────────────────────────────────────────────────────────────
 
 void OnDisplay() {
-    glClearColor(0.02f, 0.02f, 0.08f, 1.0f);
+    glClearColor(0.03f, 0.03f, 0.10f, 1.0f); // matches fog color to avoid horizon seam
     glClearDepth(1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
