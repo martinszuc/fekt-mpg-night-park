@@ -90,13 +90,13 @@ void OnInit() {
     glShadeModel(GL_SMOOTH);
     glEnable(GL_NORMALIZE);
 
-    GLfloat globalAmb[] = {0.18f, 0.18f, 0.28f, 1.0f};
+    GLfloat globalAmb[] = {0.25f, 0.25f, 0.38f, 1.0f};
     glLightModelfv(GL_LIGHT_MODEL_AMBIENT, globalAmb);
 
     // GL_LIGHT0 — moon (directional, blue-white)
-    GLfloat amb0[]  = {0.20f, 0.20f, 0.35f, 1.0f};
-    GLfloat diff0[] = {0.70f, 0.70f, 0.90f, 1.0f};
-    GLfloat spec0[] = {0.25f, 0.25f, 0.40f, 1.0f};
+    GLfloat amb0[]  = {0.28f, 0.28f, 0.45f, 1.0f};
+    GLfloat diff0[] = {0.85f, 0.85f, 1.00f, 1.0f};
+    GLfloat spec0[] = {0.30f, 0.30f, 0.50f, 1.0f};
     glLightfv(GL_LIGHT0, GL_AMBIENT,  amb0);
     glLightfv(GL_LIGHT0, GL_DIFFUSE,  diff0);
     glLightfv(GL_LIGHT0, GL_SPECULAR, spec0);
@@ -125,9 +125,9 @@ void OnInit() {
         glLightfv(li, GL_AMBIENT,               lAmb);
         glLightfv(li, GL_DIFFUSE,               lDif);
         glLightfv(li, GL_SPECULAR,              lSpc);
-        glLightf (li, GL_CONSTANT_ATTENUATION,  0.3f);
-        glLightf (li, GL_LINEAR_ATTENUATION,    0.2f);
-        glLightf (li, GL_QUADRATIC_ATTENUATION, 0.08f);
+        glLightf (li, GL_CONSTANT_ATTENUATION,  0.2f);
+        glLightf (li, GL_LINEAR_ATTENUATION,    0.10f);
+        glLightf (li, GL_QUADRATIC_ATTENUATION, 0.04f);
         glEnable(li);
     }
 
@@ -433,11 +433,9 @@ void OnDisplay() {
         char path[64];
         snprintf(path, sizeof(path), "ci_shot_%d.bmp", ciScenario);
         SaveBMP(path, glutGet(GLUT_WINDOW_WIDTH), glutGet(GLUT_WINDOW_HEIGHT));
-        glutSwapBuffers();
-        exit(0);
     }
-
     glutSwapBuffers();
+    if (ciScenario >= 0) exit(0);
 }
 
 // ─── main ────────────────────────────────────────────────────────────────────
