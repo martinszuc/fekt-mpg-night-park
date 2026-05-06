@@ -337,12 +337,19 @@ void DrawProjectiles() {
 // ─── scene assembly ──────────────────────────────────────────────────────────
 
 void DrawScene() {
-    static const float treePos[][2] = {
-        {-5, -5}, {8, -3}, {-10, 5}, {3, 10}, {-2, 15}
+    struct TreeSpec { float x, z, scale, yaw; };
+    static const TreeSpec trees[] = {
+        {-5,  -5, 1.00f,   0.0f},
+        { 8,  -3, 1.30f,  40.0f},
+        {-10,  5, 0.85f, 120.0f},
+        { 3,  10, 1.15f,  70.0f},
+        {-2,  15, 1.00f, 200.0f},
     };
-    for (auto& p : treePos) {
+    for (auto& t : trees) {
         glPushMatrix();
-            glTranslatef(p[0], 0, p[1]);
+            glTranslatef(t.x, 0, t.z);
+            glRotatef(t.yaw, 0, 1, 0);
+            glScalef(t.scale, t.scale, t.scale);
             DrawTree();
         glPopMatrix();
     }
