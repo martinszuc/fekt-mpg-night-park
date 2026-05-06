@@ -62,6 +62,62 @@ void SpawnProjectile() {
     }
 }
 
+// ─── sky ─────────────────────────────────────────────────────────────────────
+
+static float starVerts[200][3];
+static int   starCount = 0;
+
+// moon disc: fixed billboard quad at a high world-space direction
+static void DrawMoon() {
+    // place moon high in the +X / +Y quadrant, same direction as GL_LIGHT0
+    // draw as an emissive quad — no lighting, no depth write
+    glDisable(GL_LIGHTING);
+    glDepthMask(GL_FALSE);
+    glColor3f(0.95f, 0.95f, 0.80f);
+    // billboard: push camera-facing quad at distance 70, direction (0.3,1,0.2) normalised
+    const float d = 70.0f;
+    const float mx = 0.3f * d / 1.077f, my = 1.0f * d / 1.077f, mz = 0.2f * d / 1.077f;
+    const float s = 3.5f; // half-size of the disc quad
+    // build two arbitrary axes perpendicular to the moon direction
+    // right = cross(moonDir, worldUp) — but moonDir is nearly up so use worldZ instead
+    // simple: right=(1,0,0), up=(0,0,-1) rotated — just use fixed offsets in view space
+    // easier: draw in object space centred on moon position with a fixed orientation
+    glPushMatrix();
+        glTranslatef(mx, my, mz);
+        glBegin(GL_QUADS);
+            glVertex3f(-s,  s, 0);
+            glVertex3f( s,  s, 0);
+            glVertex3f( s, -s, 0);
+            glVertex3f(-s, -s, 0);
+        glEnd();
+    glPopMatrix();
+    glDepthMask(GL_TRUE);
+    glEnable(GL_LIGHTING);
+}
+
+void DrawSky() {
+    glDisable(GL_LIGHTING);
+    glDisable(GL_DEPTH_TEST);
+    glDepthMask(GL_FALSE);
+    glDisable(GL_FOG);
+
+    // stars
+    glPointSize(1.5f);
+    glColor3f(0.88f, 0.90f, 1.0f);
+    glBegin(GL_POINTS);
+    for (int i = 0; i < starCount; i++)
+        glVertex3fv(starVerts[i]);
+    glEnd();
+
+    // moon
+    DrawMoon();
+
+    glEnable(GL_FOG);
+    glDepthMask(GL_TRUE);
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_LIGHTING);
+}
+
 // ─── material helper ─────────────────────────────────────────────────────────
 
 void SetMaterial(float r, float g, float b, float shin = 32.0f) {

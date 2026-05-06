@@ -154,6 +154,18 @@ void OnInit() {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
     setTexture("assets/textures/grass.bmp", &texGrass, true);
+
+    // star field: 200 points scattered over the upper hemisphere at radius 80
+    srand(42); // deterministic so screenshots are consistent
+    starCount = 200;
+    for (int i = 0; i < starCount; i++) {
+        float theta = ((float)rand() / RAND_MAX) * 2.0f * (float)M_PI;
+        float phi   = ((float)rand() / RAND_MAX) * (float)M_PI * 0.5f;
+        float r     = 80.0f;
+        starVerts[i][0] = r * cosf(phi) * cosf(theta);
+        starVerts[i][1] = r * sinf(phi);
+        starVerts[i][2] = r * cosf(phi) * sinf(theta);
+    }
 }
 
 void OnTimer(int) {
@@ -336,6 +348,7 @@ void OnDisplay() {
         glDisable(GL_LIGHT1);
     }
 
+    DrawSky();
     DrawTerrain();
     DrawPath();
     DrawScene();
