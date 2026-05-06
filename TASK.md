@@ -629,3 +629,199 @@ Zabalit do `xlogin_mpg_projekt.zip`.
 - **Normály** — po `glScalef` nerovnoměrném je třeba `glEnable(GL_NORMALIZE)` (přidej do OnInit)
 - **GL_AUTO_NORMAL** — funguje jen pro Bézier, ne pro ručně kreslené objekty
 - **Camera bobbing útlum** — `*= 0.85f` každý frame (při 60fps = ~0.5s do zastavení), nezapomeň podmínku `isMoving`
+
+---
+
+## Additional improvement phases (post-submission)
+
+These phases are not required for grading. They address real visual and code-quality gaps found during review.
+
+---
+
+### PHASE A — Lantern point lights (commit: "feat(lighting): add point lights at lantern positions")
+
+**Problem:** lanterns have transparent glowing windows but cast no light on surrounding geometry. At night this is very noticeable — the grass and bench next to a lantern are identically dark as everything else.
+
+**What to do:**
+
+Use `GL_LIGHT2` and `GL_LIGHT3` (one per lantern). Set them as positional (w=1), warm yellow, with quadratic attenuation so the glow fades quickly.
+
+```cpp
+// in OnInit, after GL_LIGHT1 setup:
+GLfloat lAmb[] = {0.0f, 0.0f, 0.0f, 1.0f};
+GLfloat lDif[] = {1.0f, 0.85f, 0.4f, 1.0f};
+GLfloat lSpc[] = {0.3f, 0.25f, 0.1f, 1.0f};
+for (int li : {GL_LIGHT2, GL_LIGHT3}) {
+    glLightfv(li, GL_AMBIENT,  lAmb);
+    glLightfv(li, GL_DIFFUSE,  lDif);
+    glLightfv(li, GL_SPECULAR, lSpc);
+    glLightf (li, GL_CONSTANT_ATTENUATION,  0.3f);
+    glLightf (li, GL_LINEAR_ATTENUATION,    0.2f);
+    glLightf (li, GL_QUADRATIC_ATTENUATION, 0.08f);
+    glEnable(li);
+}
+```
+
+In `OnDisplay`, after the camera transform, set their positions:
+```cpp
+// lantern world positions match DrawScene hardcoded values
+float lanternWorldPos[][4] = {{4,4.2f,0,1}, {-4,4.2f,3,1}};
+glLightfv(GL_LIGHT2, GL_POSITION, lanternWorldPos[0]);
+glLightfv(GL_LIGHT3, GL_POSITION, lanternWorldPos[1]);
+```
+
+The Y=4.2 places the light at the lantern head height.
+
+Add a menu entry to toggle lantern lights (extend `OnMenu` case range and `glutAddMenuEntry`).
+
+---
+
+### PHASE B — Atmospheric fog (commit: "feat(atmosphere): add GL_FOG night fog")
+
+**Problem:** the terrain edge and object pop-in are hard and unconvincing. Night scenes in real life always have reduced visibility at distance.
+
+**What to do:**
+
+```cpp
+// in OnInit:
+glEnable(GL_FOG);
+GLfloat fogColor[] = {0.03f, 0.03f, 0.10f, 1.0f}; // dark blue-black
+glFogfv(GL_FOG_COLOR,   fogColor);
+glFogi (GL_FOG_MODE,    GL_EXP2);
+glFogf (GL_FOG_DENSITY, 0.018f);  // tune: higher = thicker
+glHint (GL_FOG_HINT,    GL_NICEST);
+```
+
+The clear color must match the fog color exactly or the horizon will show a seam:
+```cpp
+// in OnDisplay:
+glClearColor(0.03f, 0.03f, 0.10f, 1.0f); // same as fogColor
+```
+
+Tune `GL_FOG_DENSITY` so objects at ~40 units (terrain edge) are nearly invisible but objects at ~10 units are clear.
+
+---
+
+### PHASE C — Night sky: stars + moon (commit: "feat(sky): star field and moon billboard")
+
+**Problem:** background is a featureless black void. A night park should have a visible sky.
+
+**What to do in `scene.h`:**
+
+Generate a fixed set of star points once in `OnInit`, draw them as `GL_POINTS` in a pre-camera coordinate system (disable depth write, draw before everything else).
+
+```cpp
+// globals in scene.h:
+static float starVerts[200][3]; // filled in OnInit
+static int   starCount = 0;
+
+// in OnInit:
+srand(42); // deterministic
+starCount = 200;
+for (int i = 0; i < starCount; i++) {
+    float theta = ((float)rand()/RAND_MAX) * 2.0f * (float)M_PI;
+    float phi   = ((float)rand()/RAND_MAX) * (float)M_PI * 0.5f; // upper hemisphere only
+    float r     = 80.0f;
+    starVerts[i][0] = r * cosf(phi) * cosf(theta);
+    starVerts[i][1] = r * sinf(phi);
+    starVerts[i][2] = r * cosf(phi) * sinf(theta);
+}
+
+// DrawSky() — call before DrawTerrain in OnDisplay:
+void DrawSky() {
+    glDisable(GL_LIGHTING);
+    glDisable(GL_DEPTH_TEST);
+    glDepthMask(GL_FALSE);
+    glPointSize(1.5f);
+    glColor3f(0.9f, 0.9f, 1.0f);
+    glBegin(GL_POINTS);
+    for (int i = 0; i < starCount; i++)
+        glVertex3fv(starVerts[i]);
+    glEnd();
+    glDepthMask(GL_TRUE);
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_LIGHTING);
+}
+```
+
+Moon: a bright quad billboard at a fixed world direction (e.g. high on the +X side), drawn with `GL_QUADS` and a white emissive material, no lighting.
+
+---
+
+### PHASE D — Tree variation (commit: "feat(scene): randomised tree scale and yaw")
+
+**Problem:** 5 trees are pixel-identical clones. The park looks like a copy-paste grid.
+
+**What to do in `DrawScene`:**
+
+Give each tree entry a scale factor and Y-rotation:
+
+```cpp
+struct TreeSpec { float x, z, scale, yaw; };
+static const TreeSpec trees[] = {
+    {-5,  -5, 1.0f,  0.0f},
+    { 8,  -3, 1.3f, 40.0f},
+    {-10,  5, 0.85f,120.0f},
+    { 3,  10, 1.15f, 70.0f},
+    {-2,  15, 1.0f, 200.0f},
+};
+for (auto& t : trees) {
+    glPushMatrix();
+        glTranslatef(t.x, 0, t.z);
+        glRotatef(t.yaw, 0, 1, 0);
+        glScalef(t.scale, t.scale, t.scale);
+        DrawTree();
+    glPopMatrix();
+}
+```
+
+Because `glScalef` is non-uniform only along one axis here (uniform scale), `GL_NORMALIZE` (already enabled) handles the normal re-normalisation correctly.
+
+---
+
+### PHASE E — Real delta-time (commit: "fix(timer): replace hardcoded dt with glutElapsedTime")
+
+**Problem:** `dt` is hardcoded to `0.016f`. If the system is under load and the timer fires late, physics and movement skip instead of catching up.
+
+**What to do in `OnTimer`:**
+
+```cpp
+void OnTimer(int) {
+    static int lastMs = 0;
+    int nowMs = glutGet(GLUT_ELAPSED_TIME);
+    float dt  = (lastMs == 0) ? 0.016f : (nowMs - lastMs) * 0.001f;
+    dt = (dt > 0.05f) ? 0.05f : dt; // clamp: max 50ms step
+    lastMs = nowMs;
+    // ... rest unchanged, replace literal 0.016f references with dt
+}
+```
+
+The clamp prevents a single huge step if the window is unfocused for several seconds.
+
+---
+
+### PHASE F — Code cleanup: DrawScene side effect + debug output (commit: "refactor(scene): remove side effects from DrawScene, guard debug log")
+
+**Problem 1:** `DrawScene()` resets and writes to `lanternCount`/`lanternPositions` every frame. A function named `Draw*` should only draw — the position registration is a hidden mutation that makes the transparent pass depend on draw order.
+
+**Fix:** Remove the registration from `DrawScene`. Instead, define the lantern positions as a `constexpr` array in `scene.h` and use it both in `DrawScene` (for drawing) and in `OnDisplay` (for the transparent pass):
+
+```cpp
+// in scene.h — single source of truth:
+struct LanternPos { float x, y, z; };
+constexpr LanternPos kLanterns[] = {{4, 0, 0}, {-4, 0, 3}};
+constexpr int kLanternCount = 2;
+```
+
+`DrawScene` iterates `kLanterns` to place lanterns. `OnDisplay` iterates `kLanterns` for the transparent pass. Delete `lanternPositions[]` and `lanternCount`.
+
+**Problem 2:** `OnTimer` prints `[CAM]` to stdout every ~5 seconds unconditionally. Guard it:
+
+```cpp
+#ifdef DEBUG_CAM
+    static int debugTick = 0;
+    if (++debugTick >= 312) { debugTick = 0; printf("[CAM] ..."); fflush(stdout); }
+#endif
+```
+
+Add `-DDEBUG_CAM` to the CMake debug config only. The `P` key dump can stay since it's explicit.
