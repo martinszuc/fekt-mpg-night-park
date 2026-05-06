@@ -176,8 +176,8 @@ void DrawBench() {
 }
 
 struct LanternPos { float x, y, z; };
-static LanternPos lanternPositions[8];
-static int        lanternCount = 0;
+constexpr LanternPos kLanterns[]  = {{4, 0, 0}, {-4, 0, 3}};
+constexpr int        kLanternCount = 2;
 
 void DrawLantern() {
     SetMaterial(0.15f, 0.15f, 0.15f, 16.0f);
@@ -357,14 +357,10 @@ void DrawScene() {
         DrawBench();
     glPopMatrix();
 
-    lanternCount = 0;
-    static const float lanternPos[][2] = {{4, 0}, {-4, 3}};
-    for (auto& p : lanternPos) {
+    for (auto& l : kLanterns) {
         glPushMatrix();
-            glTranslatef(p[0], 0, p[1]);
+            glTranslatef(l.x, l.y, l.z);
             DrawLantern();
-            if (lanternCount < 8)
-                lanternPositions[lanternCount++] = {p[0], 0, p[1]};
         glPopMatrix();
     }
 

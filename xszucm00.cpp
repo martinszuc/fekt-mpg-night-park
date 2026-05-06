@@ -167,6 +167,7 @@ void OnTimer(int) {
         if (p.y < -10.0f) p.active = false;
     }
 
+#ifdef DEBUG_CAM
     static int debugTick = 0;
     if (++debugTick >= 312) {
         debugTick = 0;
@@ -176,6 +177,7 @@ void OnTimer(int) {
                pitch * (180.0f / (float)M_PI));
         fflush(stdout);
     }
+#endif
 
     glutPostRedisplay();
     glutTimerFunc(16, OnTimer, 0);
@@ -302,9 +304,9 @@ void OnDisplay() {
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glDepthMask(GL_FALSE);
-    for (int i = 0; i < lanternCount; i++) {
+    for (auto& l : kLanterns) {
         glPushMatrix();
-            glTranslatef(lanternPositions[i].x, lanternPositions[i].y, lanternPositions[i].z);
+            glTranslatef(l.x, l.y, l.z);
             DrawLanternWindow();
         glPopMatrix();
     }
