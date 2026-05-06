@@ -45,17 +45,18 @@ std::string lastAction = "start";
 
 // ─── projectiles ─────────────────────────────────────────────────────────────
 
-struct Projectile { float x, y, z, vx, vy, vz; bool active; };
+struct Projectile { float x, y, z, vx, vy, vz, rot; bool active; };
 Projectile projectiles[10] = {};
 
 void SpawnProjectile() {
     for (auto& p : projectiles) {
         if (p.active) continue;
         const float spd = 20.0f;
-        p.x  = camX; p.y = camFloorY + bobOffset; p.z = camZ;
-        p.vx = -sinf(yaw) * cosf(pitch) * spd;
-        p.vy =  sinf(pitch) * spd;
-        p.vz = -cosf(yaw) * cosf(pitch) * spd;
+        p.x   = camX; p.y = camFloorY + bobOffset; p.z = camZ;
+        p.vx  = -sinf(yaw) * cosf(pitch) * spd;
+        p.vy  =  sinf(pitch) * spd;
+        p.vz  = -cosf(yaw) * cosf(pitch) * spd;
+        p.rot = 0.0f;
         p.active = true;
         lastAction = "throw object";
         break;
@@ -65,23 +66,41 @@ void SpawnProjectile() {
 // ─── sky ─────────────────────────────────────────────────────────────────────
 
 static float starVerts[200][3];
+static float starPhases[200];   // twinkle phase offset per star
+static float starSpeeds[200];   // twinkle frequency per star
+static float starSizes[200];    // 0 = 1 px, 1 = 2 px
 static int   starCount = 0;
 
-// moon disc: fixed billboard quad at a high world-space direction
+// moon billboard quad: same direction as GL_LIGHT0 (0.3, 1, 0.2)
 static void DrawMoon() {
-    // place moon high in the +X / +Y quadrant, same direction as GL_LIGHT0
-    // draw as an emissive quad — no lighting, no depth write
     glDisable(GL_LIGHTING);
     glDepthMask(GL_FALSE);
+    glEnable(GL_BLEND);
+
+    const float d    = 70.0f;
+    const float norm = sqrtf(0.3f*0.3f + 1.0f*1.0f + 0.2f*0.2f);
+    const float mx   = 0.3f * d / norm;
+    const float my   = 1.0f * d / norm;
+    const float mz   = 0.2f * d / norm;
+    const float s    = 3.5f;    // disc half-size
+    const float hs   = s * 3.0f; // halo half-size
+
+    // halo: additive, very faint
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+    glColor4f(0.6f, 0.6f, 0.4f, 0.08f);
+    glPushMatrix();
+        glTranslatef(mx, my, mz);
+        glBegin(GL_QUADS);
+            glVertex3f(-hs,  hs, 0);
+            glVertex3f( hs,  hs, 0);
+            glVertex3f( hs, -hs, 0);
+            glVertex3f(-hs, -hs, 0);
+        glEnd();
+    glPopMatrix();
+
+    // disc: opaque
+    glBlendFunc(GL_ONE, GL_ZERO);
     glColor3f(0.95f, 0.95f, 0.80f);
-    // billboard: push camera-facing quad at distance 70, direction (0.3,1,0.2) normalised
-    const float d = 70.0f;
-    const float mx = 0.3f * d / 1.077f, my = 1.0f * d / 1.077f, mz = 0.2f * d / 1.077f;
-    const float s = 3.5f; // half-size of the disc quad
-    // build two arbitrary axes perpendicular to the moon direction
-    // right = cross(moonDir, worldUp) — but moonDir is nearly up so use worldZ instead
-    // simple: right=(1,0,0), up=(0,0,-1) rotated — just use fixed offsets in view space
-    // easier: draw in object space centred on moon position with a fixed orientation
     glPushMatrix();
         glTranslatef(mx, my, mz);
         glBegin(GL_QUADS);
@@ -91,6 +110,8 @@ static void DrawMoon() {
             glVertex3f(-s, -s, 0);
         glEnd();
     glPopMatrix();
+
+    glDisable(GL_BLEND);
     glDepthMask(GL_TRUE);
     glEnable(GL_LIGHTING);
 }
@@ -101,15 +122,53 @@ void DrawSky() {
     glDepthMask(GL_FALSE);
     glDisable(GL_FOG);
 
-    // stars
-    glPointSize(1.5f);
-    glColor3f(0.88f, 0.90f, 1.0f);
+    // horizon gradient cylinder — centred on camera so it always fills the sky
+    {
+        const int   segs = 32;
+        const float cR   = 75.0f;
+        const float cTop = 40.0f, cBot = -5.0f;
+        glPushMatrix();
+        glTranslatef(camX, 0.0f, camZ);
+        glBegin(GL_QUADS);
+        for (int i = 0; i < segs; i++) {
+            float a0 = (float)i       / segs * 2.0f * (float)M_PI;
+            float a1 = (float)(i + 1) / segs * 2.0f * (float)M_PI;
+            float x0 = cosf(a0) * cR, z0 = sinf(a0) * cR;
+            float x1 = cosf(a1) * cR, z1 = sinf(a1) * cR;
+            glColor3f(0.02f, 0.02f, 0.08f); // dark blue-black at top
+            glVertex3f(x0, cTop, z0);
+            glVertex3f(x1, cTop, z1);
+            glColor3f(0.05f, 0.05f, 0.20f); // deep indigo at horizon
+            glVertex3f(x1, cBot, z1);
+            glVertex3f(x0, cBot, z0);
+        }
+        glEnd();
+        glPopMatrix();
+    }
+
+    // stars with twinkle — two size passes to avoid mid-primitive glPointSize calls
+    float t = glutGet(GLUT_ELAPSED_TIME) * 0.001f;
+
+    glPointSize(1.0f);
     glBegin(GL_POINTS);
-    for (int i = 0; i < starCount; i++)
+    for (int i = 0; i < starCount; i++) {
+        if (starSizes[i] >= 0.5f) continue;
+        float bright = 0.5f + 0.5f * sinf(t * starSpeeds[i] + starPhases[i]);
+        glColor3f(0.88f * bright, 0.90f * bright, bright);
         glVertex3fv(starVerts[i]);
+    }
     glEnd();
 
-    // moon
+    glPointSize(2.0f);
+    glBegin(GL_POINTS);
+    for (int i = 0; i < starCount; i++) {
+        if (starSizes[i] < 0.5f) continue;
+        float bright = 0.5f + 0.5f * sinf(t * starSpeeds[i] + starPhases[i]);
+        glColor3f(0.88f * bright, 0.90f * bright, bright);
+        glVertex3fv(starVerts[i]);
+    }
+    glEnd();
+
     DrawMoon();
 
     glEnable(GL_FOG);
@@ -132,7 +191,7 @@ void SetMaterial(float r, float g, float b, float shin = 32.0f) {
 
 // ─── geometry primitives ─────────────────────────────────────────────────────
 
-// box with bottom at Y=0, centred on X/Z; UV coords on every vertex
+// axis-aligned box: bottom at Y=0, centred on X/Z
 void DrawBox(float w, float h, float d) {
     float hw = w * 0.5f, hd = d * 0.5f;
     glBegin(GL_QUADS);
@@ -169,7 +228,7 @@ void DrawBox(float w, float h, float d) {
     glEnd();
 }
 
-// cross product of two edges → unit face normal
+// compute and emit unit face normal from three CCW vertices
 static void triNormal(float ax, float ay, float az,
                       float bx, float by, float bz,
                       float cx, float cy, float cz) {
@@ -185,24 +244,47 @@ static void triNormal(float ax, float ay, float az,
 // ─── scene objects ───────────────────────────────────────────────────────────
 
 void DrawTree() {
+    // trunk
     SetMaterial(0.35f, 0.20f, 0.08f);
-    DrawBox(0.4f, 3.0f, 0.4f);
+    DrawBox(0.4f, 2.5f, 0.4f);
 
-    SetMaterial(0.10f, 0.40f, 0.10f);
-    const int   sides = 8;
-    const float baseR = 1.25f, baseY = 3.0f, apexY = 6.0f;
-    glBegin(GL_TRIANGLES);
-    for (int i = 0; i < sides; i++) {
-        float a0 = (float)i       / sides * 2.0f * (float)M_PI;
-        float a1 = (float)(i + 1) / sides * 2.0f * (float)M_PI;
-        float x0 = cosf(a0) * baseR, z0 = sinf(a0) * baseR;
-        float x1 = cosf(a1) * baseR, z1 = sinf(a1) * baseR;
-        triNormal(x0, baseY, z0,  x1, baseY, z1,  0, apexY, 0);
-        glVertex3f(x0, baseY, z0);
-        glVertex3f(x1, baseY, z1);
-        glVertex3f(0,  apexY, 0);
+    // undergrowth disc at base — hides the trunk-ground seam
+    SetMaterial(0.06f, 0.18f, 0.06f);
+    {
+        const int disc = 8;
+        glBegin(GL_TRIANGLE_FAN);
+        glNormal3f(0, 1, 0);
+        glVertex3f(0, 0.01f, 0);
+        for (int i = 0; i <= disc; i++) {
+            float a = (float)i / disc * 2.0f * (float)M_PI;
+            glVertex3f(cosf(a) * 1.55f, 0.01f, sinf(a) * 1.55f);
+        }
+        glEnd();
     }
-    glEnd();
+
+    // three-layer spruce canopy — darker at base, lighter toward tip
+    struct ConeLayer { float baseR, baseY, apexY; float r, g, b; };
+    static const ConeLayer layers[] = {
+        {1.25f, 2.5f, 4.5f, 0.10f, 0.38f, 0.10f},
+        {0.90f, 4.0f, 6.0f, 0.12f, 0.44f, 0.12f},
+        {0.55f, 5.5f, 7.0f, 0.14f, 0.50f, 0.14f},
+    };
+    const int sides = 8;
+    for (auto& layer : layers) {
+        SetMaterial(layer.r, layer.g, layer.b);
+        glBegin(GL_TRIANGLES);
+        for (int i = 0; i < sides; i++) {
+            float a0 = (float)i       / sides * 2.0f * (float)M_PI;
+            float a1 = (float)(i + 1) / sides * 2.0f * (float)M_PI;
+            float x0 = cosf(a0) * layer.baseR, z0 = sinf(a0) * layer.baseR;
+            float x1 = cosf(a1) * layer.baseR, z1 = sinf(a1) * layer.baseR;
+            triNormal(x0, layer.baseY, z0,  x1, layer.baseY, z1,  0, layer.apexY, 0);
+            glVertex3f(x0, layer.baseY, z0);
+            glVertex3f(x1, layer.baseY, z1);
+            glVertex3f(0,  layer.apexY, 0);
+        }
+        glEnd();
+    }
 }
 
 void DrawBench() {
@@ -210,11 +292,13 @@ void DrawBench() {
 
     const float seatW = 2.0f, seatD = 0.65f, seatH = 0.7f;
 
+    // seat plank
     glPushMatrix();
         glTranslatef(0, seatH, 0);
         DrawBox(seatW, 0.12f, seatD);
     glPopMatrix();
 
+    // four legs
     float lx[2] = {-(seatW * 0.5f - 0.08f),  (seatW * 0.5f - 0.08f)};
     float lz[2] = {-(seatD * 0.5f - 0.08f),   (seatD * 0.5f - 0.08f)};
     for (int i = 0; i < 2; i++) for (int j = 0; j < 2; j++) {
@@ -224,15 +308,26 @@ void DrawBench() {
         glPopMatrix();
     }
 
+    // backrest
     glPushMatrix();
         glTranslatef(0, seatH, -(seatD * 0.5f));
         glRotatef(-15.0f, 1, 0, 0);
         DrawBox(seatW, 0.60f, 0.09f);
     glPopMatrix();
+
+    // armrests at outer ends
+    const float armW = seatW * 0.08f;
+    float ax[2] = {-(seatW * 0.5f - armW * 0.5f), (seatW * 0.5f - armW * 0.5f)};
+    for (int i = 0; i < 2; i++) {
+        glPushMatrix();
+            glTranslatef(ax[i], seatH, 0);
+            DrawBox(armW, 0.35f, seatD);
+        glPopMatrix();
+    }
 }
 
 struct LanternPos { float x, y, z; };
-constexpr LanternPos kLanterns[]  = {{4, 0, 0}, {-4, 0, 3}};
+constexpr LanternPos kLanterns[]   = {{4, 0, 0}, {-4, 0, 3}};
 constexpr int        kLanternCount = 2;
 
 void DrawLantern() {
@@ -262,34 +357,61 @@ void DrawLanternWindow() {
     glPopMatrix();
 }
 
+// camera-facing glow halo at the lantern head
+// rx/ry/rz = camera right in world space, ux/uy/uz = camera up in world space
+// call with additive blend (GL_SRC_ALPHA, GL_ONE) and depth-mask off already active
+void DrawLanternGlow(float rx, float ry, float rz,
+                     float ux, float uy, float uz) {
+    const float s = 0.8f;
+    glDisable(GL_LIGHTING);
+    glColor4f(1.0f, 0.85f, 0.3f, 0.25f);
+    glPushMatrix();
+        glTranslatef(0, 4.2f, 0);
+        glBegin(GL_QUADS);
+            glVertex3f((-rx + ux) * s, (-ry + uy) * s, (-rz + uz) * s); // TL
+            glVertex3f(( rx + ux) * s, ( ry + uy) * s, ( rz + uz) * s); // TR
+            glVertex3f(( rx - ux) * s, ( ry - uy) * s, ( rz - uz) * s); // BR
+            glVertex3f((-rx - ux) * s, (-ry - uy) * s, (-rz - uz) * s); // BL
+        glEnd();
+    glPopMatrix();
+    glEnable(GL_LIGHTING);
+}
+
 void DrawShed() {
+    // walls
     SetMaterial(0.60f, 0.45f, 0.25f);
     DrawBox(4.0f, 2.5f, 3.0f);
 
+    // roof
     SetMaterial(0.45f, 0.20f, 0.10f);
     float bx = 2.3f, by = 2.5f, ridge = 3.5f, rz = 1.5f;
     glBegin(GL_QUADS);
         triNormal(-bx, by, -rz,  -bx, by, rz,  0, ridge, rz);
-        glVertex3f(-bx, by, -rz);
-        glVertex3f(-bx, by,  rz);
-        glVertex3f(  0, ridge,  rz);
-        glVertex3f(  0, ridge, -rz);
+        glVertex3f(-bx, by, -rz); glVertex3f(-bx, by,  rz);
+        glVertex3f(  0, ridge,  rz); glVertex3f(  0, ridge, -rz);
         triNormal(bx, by, rz,  bx, by, -rz,  0, ridge, -rz);
-        glVertex3f( bx, by,  rz);
-        glVertex3f( bx, by, -rz);
-        glVertex3f(  0, ridge, -rz);
-        glVertex3f(  0, ridge,  rz);
+        glVertex3f( bx, by,  rz); glVertex3f( bx, by, -rz);
+        glVertex3f(  0, ridge, -rz); glVertex3f(  0, ridge,  rz);
     glEnd();
     glBegin(GL_TRIANGLES);
         triNormal(-bx, by, rz,  bx, by, rz,  0, ridge, rz);
-        glVertex3f(-bx, by, rz);
-        glVertex3f( bx, by, rz);
-        glVertex3f(  0, ridge, rz);
+        glVertex3f(-bx, by, rz); glVertex3f( bx, by, rz); glVertex3f(0, ridge, rz);
         triNormal( bx, by, -rz,  -bx, by, -rz,  0, ridge, -rz);
-        glVertex3f( bx, by, -rz);
-        glVertex3f(-bx, by, -rz);
-        glVertex3f(  0, ridge, -rz);
+        glVertex3f( bx, by, -rz); glVertex3f(-bx, by, -rz); glVertex3f(0, ridge, -rz);
     glEnd();
+
+    // door on front face (z = 1.5), slightly offset from centre
+    SetMaterial(0.35f, 0.18f, 0.08f);
+    glPushMatrix();
+        glTranslatef(0.4f, 0.0f, 1.53f);
+        DrawBox(0.8f, 1.8f, 0.06f);
+        // door knob
+        SetMaterial(0.65f, 0.55f, 0.20f, 64.0f);
+        glPushMatrix();
+            glTranslatef(-0.25f, 0.9f, 0.06f);
+            DrawBox(0.08f, 0.08f, 0.08f);
+        glPopMatrix();
+    glPopMatrix();
 }
 
 void DrawBoulder() {
@@ -323,12 +445,27 @@ void DrawBoulder() {
 
 void DrawFence(int count, float spacing) {
     SetMaterial(0.60f, 0.45f, 0.25f);
+    const float pb = 0.06f, ph = 0.12f; // pyramid cap: half-base, height
+
     for (int i = 0; i < count; i++) {
         glPushMatrix();
             glTranslatef(i * spacing, 0, 0);
             DrawBox(0.10f, 1.2f, 0.10f);
+            // pyramid cap on top of post
+            glTranslatef(0, 1.2f, 0);
+            glBegin(GL_TRIANGLES);
+                triNormal(-pb, 0,  pb,   pb, 0,  pb,  0, ph, 0);
+                glVertex3f(-pb, 0,  pb); glVertex3f( pb, 0,  pb); glVertex3f(0, ph, 0);
+                triNormal( pb, 0,  pb,   pb, 0, -pb,  0, ph, 0);
+                glVertex3f( pb, 0,  pb); glVertex3f( pb, 0, -pb); glVertex3f(0, ph, 0);
+                triNormal( pb, 0, -pb,  -pb, 0, -pb,  0, ph, 0);
+                glVertex3f( pb, 0, -pb); glVertex3f(-pb, 0, -pb); glVertex3f(0, ph, 0);
+                triNormal(-pb, 0, -pb,  -pb, 0,  pb,  0, ph, 0);
+                glVertex3f(-pb, 0, -pb); glVertex3f(-pb, 0,  pb); glVertex3f(0, ph, 0);
+            glEnd();
         glPopMatrix();
     }
+    // horizontal rails
     glPushMatrix();
         glTranslatef((count - 1) * spacing * 0.5f - 0.05f, 0.9f, 0);
         DrawBox((count - 1) * spacing, 0.06f, 0.06f);
@@ -352,6 +489,27 @@ void DrawWindmill() {
             DrawBox(0.15f, 2.0f, 0.05f);
         glPopMatrix();
     }
+}
+
+// ─── fireflies ───────────────────────────────────────────────────────────────
+
+struct Firefly { float x, y, z, phase, speed, wanderAngle; };
+static Firefly      fireflies[8];
+static const int    kFireflyCount = 8;
+
+void DrawFireflies() {
+    glDisable(GL_LIGHTING);
+    glPointSize(3.0f);
+    float t = glutGet(GLUT_ELAPSED_TIME) * 0.001f;
+    glBegin(GL_POINTS);
+    for (int i = 0; i < kFireflyCount; i++) {
+        float b = 0.5f + 0.5f * sinf(t * fireflies[i].speed + fireflies[i].phase);
+        glColor3f(0.3f * b, 0.9f * b, 0.2f * b); // green-yellow blink
+        glVertex3f(fireflies[i].x, fireflies[i].y, fireflies[i].z);
+    }
+    glEnd();
+    glPointSize(1.0f);
+    glEnable(GL_LIGHTING);
 }
 
 // ─── projectile drawing ──────────────────────────────────────────────────────
@@ -385,6 +543,7 @@ void DrawProjectiles() {
         if (!p.active) continue;
         glPushMatrix();
             glTranslatef(p.x, p.y, p.z);
+            glRotatef(p.rot, 1, 1, 0); // spin in flight
             DrawOctahedron(0.2f);
         glPopMatrix();
     }
@@ -410,6 +569,7 @@ void DrawScene() {
         glPopMatrix();
     }
 
+    // benches
     glPushMatrix();
         glTranslatef(0, 0, 0);
         DrawBench();
@@ -420,6 +580,7 @@ void DrawScene() {
         DrawBench();
     glPopMatrix();
 
+    // lanterns
     for (auto& l : kLanterns) {
         glPushMatrix();
             glTranslatef(l.x, l.y, l.z);
@@ -427,36 +588,45 @@ void DrawScene() {
         glPopMatrix();
     }
 
+    // shed
     glPushMatrix();
         glTranslatef(12, 0, -8);
         DrawShed();
     glPopMatrix();
 
-    glPushMatrix(); glTranslatef(-8, 0,   8); DrawBoulder(); glPopMatrix();
-    glPushMatrix(); glTranslatef( 2, 0, -10); DrawBoulder(); glPopMatrix();
+    // boulder cluster near (-8, 0, 8)
+    glPushMatrix(); glTranslatef(-8.0f, 0,  8.0f); DrawBoulder(); glPopMatrix();
+    glPushMatrix(); glTranslatef(-9.5f, 0,  7.0f); glScalef(0.4f, 0.4f, 0.4f); DrawBoulder(); glPopMatrix();
+    glPushMatrix(); glTranslatef(-7.0f, 0,  9.0f); glScalef(0.3f, 0.3f, 0.3f); DrawBoulder(); glPopMatrix();
+    glPushMatrix(); glTranslatef(-8.5f, 0,  9.5f); glScalef(0.5f, 0.5f, 0.5f); DrawBoulder(); glPopMatrix();
+    // second boulder
+    glPushMatrix(); glTranslatef( 2.0f, 0, -10.0f); DrawBoulder(); glPopMatrix();
 
+    // fence
     glPushMatrix();
         glTranslatef(-6, 0, -15);
         DrawFence(10, 1.2f);
     glPopMatrix();
 
+    // windmill
     glPushMatrix();
         glTranslatef(0, 0, -20);
         DrawWindmill();
     glPopMatrix();
+
+    // fireflies
+    DrawFireflies();
 }
 
 // ─── terrain ─────────────────────────────────────────────────────────────────
 
 void DrawTerrain() {
-    // hills only at the four far corners; interior stays near Y=0
     static float cp[4][4][3] = {
         {{-40,2,-40},{-13,0,-40},{ 13,0,-40},{40,2,-40}},
         {{-40,0,-13},{-13,0,-13},{ 13,0,-13},{40,0,-13}},
         {{-40,0, 13},{-13,0, 13},{ 13,0, 13},{40,0, 13}},
         {{-40,2, 40},{-13,0, 40},{ 13,0, 40},{40,2, 40}},
     };
-    // texture coordinates scaled ×5 so grass tile repeats
     static float tcp[4][4][2] = {
         {{0,0},{1.67f,0},{3.33f,0},{5,0}},
         {{0,1.67f},{1.67f,1.67f},{3.33f,1.67f},{5,1.67f}},
@@ -475,10 +645,7 @@ void DrawTerrain() {
         glEnable(GL_MAP2_TEXTURE_COORD_2);
     }
 
-    glMap2f(GL_MAP2_VERTEX_3,
-        0,1,  3, 4,
-        0,1, 12, 4,
-        &cp[0][0][0]);
+    glMap2f(GL_MAP2_VERTEX_3, 0,1, 3, 4, 0,1, 12, 4, &cp[0][0][0]);
     glEnable(GL_MAP2_VERTEX_3);
     glEnable(GL_AUTO_NORMAL);
     glMapGrid2f(30, 0,1, 30, 0,1);
@@ -497,7 +664,11 @@ void DrawPath() {
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
     }
-    SetMaterial(0.50f, 0.45f, 0.35f, 8.0f);
+    // wet-stone: high shininess + boosted specular so moonlight glints off path
+    SetMaterial(0.50f, 0.45f, 0.35f, 128.0f);
+    GLfloat pathSpec[] = {0.6f, 0.6f, 0.6f, 1.0f};
+    glMaterialfv(GL_FRONT, GL_SPECULAR, pathSpec);
+
     glNormal3f(0, 1, 0);
     glBegin(GL_QUADS);
         glTexCoord2f(0, 0);  glVertex3f(-1.0f, 0.02f,  25.0f);
@@ -526,11 +697,30 @@ void DrawHUD() {
     glPushMatrix();
     glLoadIdentity();
 
+    // FPS counter — update once per second
+    static int fps = 0, fpsFrames = 0, fpsLastMs = 0;
+    fpsFrames++;
+    int nowMs = glutGet(GLUT_ELAPSED_TIME);
+    if (nowMs - fpsLastMs >= 1000) {
+        fps       = fpsFrames;
+        fpsFrames = 0;
+        fpsLastMs = nowMs;
+    }
+
+    // bottom-left: last action
     glColor3f(1.0f, 1.0f, 0.0f);
-    glRasterPos2i(10, 20);
+    glRasterPos2i(10, 22);
     for (const char* c = lastAction.c_str(); *c; c++)
         glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, *c);
 
+    // bottom-right: key hints
+    const char* hints = "WASD move  R torch  Space throw  RMB menu";
+    glColor3f(0.45f, 0.45f, 0.45f);
+    glRasterPos2i(w - 298, 8);
+    for (const char* c = hints; *c; c++)
+        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12, *c);
+
+    // top-left: position / state info
     char info[128];
     snprintf(info, sizeof(info), "pos (%.1f, %.1f, %.1f)  torch: %s  tex: %s",
              camX, camFloorY + bobOffset, camZ,
@@ -540,6 +730,27 @@ void DrawHUD() {
     glRasterPos2i(10, h - 24);
     for (const char* c = info; *c; c++)
         glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12, *c);
+
+    // top-right: FPS
+    char fpsBuf[16];
+    snprintf(fpsBuf, sizeof(fpsBuf), "FPS: %d", fps);
+    glColor3f(0.5f, 0.5f, 0.5f);
+    glRasterPos2i(w - 72, h - 24);
+    for (const char* c = fpsBuf; *c; c++)
+        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12, *c);
+
+    // centre: crosshair
+    {
+        int cx = w / 2, cy = h / 2;
+        const int arm = 8;
+        glColor3f(1.0f, 1.0f, 1.0f);
+        glBegin(GL_LINES);
+            glVertex2i(cx - arm, cy);
+            glVertex2i(cx + arm, cy);
+            glVertex2i(cx, cy - arm);
+            glVertex2i(cx, cy + arm);
+        glEnd();
+    }
 
     glPopMatrix();
     glMatrixMode(GL_PROJECTION);

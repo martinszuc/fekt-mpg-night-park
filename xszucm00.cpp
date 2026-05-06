@@ -165,6 +165,20 @@ void OnInit() {
         starVerts[i][0] = r * cosf(phi) * cosf(theta);
         starVerts[i][1] = r * sinf(phi);
         starVerts[i][2] = r * cosf(phi) * sinf(theta);
+        // twinkle parameters
+        starPhases[i] = ((float)rand() / RAND_MAX) * 6.28f;
+        starSpeeds[i] = 0.8f + ((float)rand() / RAND_MAX) * 2.5f;
+        starSizes[i]  = (rand() % 3 == 0) ? 1.0f : 0.0f; // ~1/3 large
+    }
+
+    // fireflies: scattered around the park interior
+    for (int i = 0; i < kFireflyCount; i++) {
+        fireflies[i].x           = (float)(rand() % 30) - 15.0f;
+        fireflies[i].y           = 0.4f + ((float)rand() / RAND_MAX) * 1.1f;
+        fireflies[i].z           = (float)(rand() % 30) - 5.0f;
+        fireflies[i].phase       = ((float)rand() / RAND_MAX) * 6.28f;
+        fireflies[i].speed       = 1.5f + ((float)rand() / RAND_MAX) * 2.0f;
+        fireflies[i].wanderAngle = ((float)rand() / RAND_MAX) * 6.28f;
     }
 }
 
@@ -199,11 +213,38 @@ void OnTimer(int) {
 
     for (auto& p : projectiles) {
         if (!p.active) continue;
-        p.vy -= 9.8f * dt;
-        p.x  += p.vx * dt;
-        p.y  += p.vy * dt;
-        p.z  += p.vz * dt;
+        p.vy  -= 9.8f * dt;
+        p.x   += p.vx * dt;
+        p.y   += p.vy * dt;
+        p.z   += p.vz * dt;
+        p.rot += 200.0f * dt; // spin while in flight
         if (p.y < -10.0f) p.active = false;
+    }
+
+    // torch flicker — dual-sine so it feels organic
+    if (torchOn) {
+        float flicker = 0.85f + 0.15f * sinf(nowMs * 0.037f) * sinf(nowMs * 0.019f);
+        GLfloat fd[] = {1.0f * flicker, 0.9f * flicker, 0.7f * flicker, 1.0f};
+        glLightfv(GL_LIGHT1, GL_DIFFUSE, fd);
+    }
+
+    // lantern pulse — slow warm breath
+    {
+        float lb = 1.0f + 0.08f * sinf(nowMs * 0.0013f);
+        GLfloat ld[] = {1.0f * lb, 0.85f * lb, 0.40f * lb, 1.0f};
+        glLightfv(GL_LIGHT2, GL_DIFFUSE, ld);
+        glLightfv(GL_LIGHT3, GL_DIFFUSE, ld);
+    }
+
+    // firefly wander
+    for (auto& f : fireflies) {
+        f.wanderAngle += (((float)rand() / RAND_MAX) - 0.5f) * 1.5f * dt;
+        f.x += cosf(f.wanderAngle) * 0.8f * dt;
+        f.z += sinf(f.wanderAngle) * 0.8f * dt;
+        if (f.x < -20.0f) f.x = -20.0f;
+        if (f.x >  20.0f) f.x =  20.0f;
+        if (f.z < -25.0f) f.z = -25.0f;
+        if (f.z >  25.0f) f.z =  25.0f;
     }
 
 #ifdef DEBUG_CAM
@@ -354,16 +395,35 @@ void OnDisplay() {
     DrawScene();
     DrawProjectiles();
 
-    // transparent pass — lantern windows
+    // transparent pass — lantern windows + glow halos
     glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glDepthMask(GL_FALSE);
+
+    // 1) lantern windows: standard alpha blend
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     for (auto& l : kLanterns) {
         glPushMatrix();
             glTranslatef(l.x, l.y, l.z);
             DrawLanternWindow();
         glPopMatrix();
     }
+
+    // 2) lantern glow halos: additive blend, camera-facing billboard
+    //    read camera right/up from the current modelview (column-major: row 0 = right, row 1 = up)
+    {
+        float mv[16];
+        glGetFloatv(GL_MODELVIEW_MATRIX, mv);
+        float rx = mv[0], ry = mv[4], rz = mv[8];
+        float ux = mv[1], uy = mv[5], uz = mv[9];
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+        for (auto& l : kLanterns) {
+            glPushMatrix();
+                glTranslatef(l.x, l.y, l.z);
+                DrawLanternGlow(rx, ry, rz, ux, uy, uz);
+            glPopMatrix();
+        }
+    }
+
     glDepthMask(GL_TRUE);
     glDisable(GL_BLEND);
 
