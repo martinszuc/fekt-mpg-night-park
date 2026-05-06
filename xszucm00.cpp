@@ -117,6 +117,20 @@ void OnInit() {
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS);
 
+    // GL_LIGHT2 / GL_LIGHT3 — lantern point lights (warm yellow, tight radius)
+    GLfloat lAmb[] = {0.0f,  0.0f,  0.0f,  1.0f};
+    GLfloat lDif[] = {1.0f,  0.85f, 0.40f, 1.0f};
+    GLfloat lSpc[] = {0.30f, 0.25f, 0.10f, 1.0f};
+    for (int li : {GL_LIGHT2, GL_LIGHT3}) {
+        glLightfv(li, GL_AMBIENT,               lAmb);
+        glLightfv(li, GL_DIFFUSE,               lDif);
+        glLightfv(li, GL_SPECULAR,              lSpc);
+        glLightf (li, GL_CONSTANT_ATTENUATION,  0.3f);
+        glLightf (li, GL_LINEAR_ATTENUATION,    0.2f);
+        glLightf (li, GL_QUADRATIC_ATTENUATION, 0.08f);
+        glEnable(li);
+    }
+
     // atmospheric fog — dark blue-black, fades objects beyond ~40 units
     GLfloat fogColor[] = {0.03f, 0.03f, 0.10f, 1.0f};
     glEnable(GL_FOG);
@@ -272,7 +286,14 @@ void OnMenu(int val) {
             else                        { glEnable (GL_LIGHT0); lastAction = "light ON";  }
             break;
         case 5: torchOn = !torchOn; lastAction = torchOn ? "torch ON" : "torch OFF"; break;
-        case 6: exit(0);
+        case 6: {
+            bool on = glIsEnabled(GL_LIGHT2);
+            on ? glDisable(GL_LIGHT2) : glEnable(GL_LIGHT2);
+            on ? glDisable(GL_LIGHT3) : glEnable(GL_LIGHT3);
+            lastAction = on ? "lanterns OFF" : "lanterns ON";
+            break;
+        }
+        case 7: exit(0);
     }
     glutPostRedisplay();
 }
@@ -293,6 +314,13 @@ void OnDisplay() {
 
     GLfloat moonPos[] = {0.3f, 1.0f, 0.2f, 0.0f};
     glLightfv(GL_LIGHT0, GL_POSITION, moonPos);
+
+    // lantern point lights — positional (w=1), placed at lantern head height
+    const GLenum lanternLights[] = {GL_LIGHT2, GL_LIGHT3};
+    for (int i = 0; i < kLanternCount; i++) {
+        GLfloat lp[] = {kLanterns[i].x, 4.2f, kLanterns[i].z, 1.0f};
+        glLightfv(lanternLights[i], GL_POSITION, lp);
+    }
 
     if (torchOn) {
         glEnable(GL_LIGHT1);
@@ -364,7 +392,8 @@ int main(int argc, char* argv[]) {
     glutAddMenuEntry("Textures ON/OFF",  3);
     glutAddMenuEntry("Light ON/OFF",     4);
     glutAddMenuEntry("Torch ON/OFF",     5);
-    glutAddMenuEntry("Exit",             6);
+    glutAddMenuEntry("Lanterns ON/OFF",  6);
+    glutAddMenuEntry("Exit",             7);
     glutAttachMenu(GLUT_RIGHT_BUTTON);
 
     OnInit();
