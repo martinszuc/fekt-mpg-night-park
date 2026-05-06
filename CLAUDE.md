@@ -21,12 +21,19 @@ Build: `cmake -B build && cmake --build build`, then run from project root: `./b
 xszucm00.cpp          main source (all code lives here)
 imageLoad.h           BMP/TGA loader — do not modify
 CMakeLists.txt        build config
+VERSION               plain-text version (e.g. 0.1.0) — written by release CI from tag
 assets/
   textures/
     grass.bmp         512×512 grass texture (converted from JPEG)
+screenshots/
+  latest/             scene_0..2.webp — overwritten on every release
+  v0.1.0/            archived WebP screenshots per release tag
 TASK.md               phase-by-phase implementation plan with ✅ progress markers
-README.md             project design notes and code snippets
+README.md             project design notes + auto-updated screenshot sections
 CODESTYLE.md          coding and git rules
+.github/workflows/
+  build.yml           builds on macOS + Windows on every push/PR
+  release.yml         triggered by v* tag — renders screenshots, updates README, creates GH release
 ```
 
 ---
@@ -89,10 +96,49 @@ Check `TASK.md` for detailed per-phase specs. Mark phases `✅` there as they co
 | `texGrass / texChecker` | OpenGL texture IDs |
 | `lastAction` | String shown in HUD bottom-left |
 | `projectiles[10]` | Active thrown objects |
+| `ciScenario` | -1 = normal mode; 0-2 = headless CI render then exit |
+
+---
+
+## CI / release workflow
+
+### How releases work
+1. Push a `v*.*.*` tag: `git tag v0.2.0 && git push origin v0.2.0`
+2. `release.yml` runs on Ubuntu with Xvfb + Mesa software GL
+3. Builds the project, then runs the app **three times** with `--ci-scenario 0/1/2`
+4. Each run sets the hardcoded camera, renders one frame, writes `ci_shot_N.bmp` via `glReadPixels`, exits
+5. BMPs are converted to WebP with ImageMagick
+6. Saved to `screenshots/latest/` (overwritten) and `screenshots/vX.Y.Z/` (archived)
+7. README is updated: latest section (3 full-width stacked images) + history table row prepended
+8. `VERSION` file is updated from the tag (strip `v` prefix)
+9. A GitHub release is created with the three WebP files attached
+
+### CI screenshot scenarios (--ci-scenario)
+Hardcoded camera positions in `xszucm00.cpp` (yaw/pitch in radians):
+
+| # | camX | camZ | yaw (°) | pitch (°) | What's visible |
+|---|------|------|---------|-----------|----------------|
+| 0 | 6.56 | 6.69 | 4.58    | 1.15      | bench + lanterns area |
+| 1 | 5.02 | 17.15| 45.26   | 0.29      | entry angle, windmill side |
+| 2 | 1.75 | 5.37 | 8.59    | 1.43      | deep park, shed visible |
+
+To add or change scenarios: edit the `scenarios[]` array in `main()` inside `xszucm00.cpp`.
+
+### Debug camera logger
+- **Automatic**: prints `[CAM]` line to stdout every 5 seconds while running
+- **On demand**: press `P` for an instant position dump
+- Output format: `[CAM] x=  y=  z=  yaw= deg  pitch= deg`
+- Use this to find new viewpoints, then hardcode them as CI scenarios
+
+### Linux build notes (relevant for CI)
+- Link `OpenGL::GLU` explicitly — GLU is a separate lib on Linux, not bundled in the framework
+- Use `GLUT::GLUT` (uppercase) — that is the correct CMake imported target name
+- `#include <cstring>` must come before `imageLoad.h` — Linux GCC does not pull it in implicitly
+- CI uses `LIBGL_ALWAYS_SOFTWARE=1` with Mesa for headless rendering on Xvfb
 
 ---
 
 ## Missing / blocked
 
 - `grass.bmp` ✅ present at `assets/textures/grass.bmp`
-- No blockers for Phase 2
+- No blockers
