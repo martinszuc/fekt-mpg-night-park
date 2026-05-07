@@ -545,89 +545,337 @@ void DrawFence(int count, float spacing) {
 }
 
 // tapered blade: wider at root (y=0), narrower at tip (y=len)
+// spine spar and cross-braces added on the front face (+Z side)
 static void DrawBlade(float len, float rootW, float depth) {
     float hr = rootW * 0.5f;
     float ht = rootW * 0.12f;
     float hd = depth * 0.5f;
     float sideN = len, sideNy = hr - ht;
     float sideNl = sqrtf(sideN * sideN + sideNy * sideNy);
+
+    // main blade body
     glBegin(GL_QUADS);
-        // front face
         glNormal3f(0, 0, 1);
         glVertex3f(-hr, 0,   hd); glVertex3f( hr, 0,   hd);
         glVertex3f( ht, len, hd); glVertex3f(-ht, len, hd);
-        // back face
         glNormal3f(0, 0, -1);
         glVertex3f( hr, 0,  -hd); glVertex3f(-hr, 0,  -hd);
         glVertex3f(-ht, len,-hd); glVertex3f( ht, len,-hd);
-        // right edge
         glNormal3f( sideN / sideNl, sideNy / sideNl, 0);
         glVertex3f( hr, 0,   hd); glVertex3f( hr, 0,  -hd);
         glVertex3f( ht, len,-hd); glVertex3f( ht, len, hd);
-        // left edge
         glNormal3f(-sideN / sideNl, sideNy / sideNl, 0);
         glVertex3f(-hr, 0,  -hd); glVertex3f(-hr, 0,   hd);
         glVertex3f(-ht, len, hd); glVertex3f(-ht, len,-hd);
-        // tip cap
         glNormal3f(0, 1, 0);
         glVertex3f(-ht, len,-hd); glVertex3f(-ht, len, hd);
         glVertex3f( ht, len, hd); glVertex3f( ht, len,-hd);
-        // root cap
         glNormal3f(0, -1, 0);
         glVertex3f( hr, 0,   hd); glVertex3f(-hr, 0,   hd);
         glVertex3f(-hr, 0,  -hd); glVertex3f( hr, 0,  -hd);
     glEnd();
+
+    // central spine spar on front face
+    SetMaterial(0.52f, 0.38f, 0.18f, 16.0f);
+    glPushMatrix();
+        glTranslatef(0, len * 0.5f, hd + 0.04f);
+        DrawBox(0.06f, len, 0.08f);
+    glPopMatrix();
+
+    // cross-braces at 1/3 and 2/3 span
+    for (int ci = 1; ci <= 2; ci++) {
+        float frac = ci / 3.0f;
+        float hw   = hr + (ht - hr) * frac;
+        glPushMatrix();
+            glTranslatef(0, len * frac, hd + 0.04f);
+            DrawBox(hw * 2.0f * 0.88f, 0.04f, 0.08f);
+        glPopMatrix();
+    }
 }
 
 void DrawWindmill() {
-    // octagonal tapered tower (wide at base, narrow at top)
     const int   sides  = 8;
     const float baseR  = 0.45f, topR = 0.20f, height = 5.0f;
+
+    // ── foundation cobble ring ────────────────────────────────────────────────
+    const int   fSegs  = 16;
+    const float fOuter = baseR + 0.32f;
+    SetMaterial(0.38f, 0.33f, 0.26f, 4.0f);
+    glBegin(GL_TRIANGLE_STRIP);
+    glNormal3f(0, 1, 0);
+    for (int i = 0; i <= fSegs; i++) {
+        float a = (float)i / fSegs * 2.0f * (float)M_PI;
+        glVertex3f(cosf(a) * fOuter, 0.01f, sinf(a) * fOuter);
+        glVertex3f(cosf(a) * baseR,  0.01f, sinf(a) * baseR);
+    }
+    glEnd();
+
+    // ── octagonal tapered tower ───────────────────────────────────────────────
     SetMaterial(0.72f, 0.62f, 0.48f, 8.0f);
     glBegin(GL_QUADS);
     for (int i = 0; i < sides; i++) {
         float a0 = (float)i       / sides * 2.0f * (float)M_PI;
         float a1 = (float)(i + 1) / sides * 2.0f * (float)M_PI;
-        float bx0 = cosf(a0) * baseR, bz0 = sinf(a0) * baseR;
-        float bx1 = cosf(a1) * baseR, bz1 = sinf(a1) * baseR;
-        float tx0 = cosf(a0) * topR,  tz0 = sinf(a0) * topR;
-        float tx1 = cosf(a1) * topR,  tz1 = sinf(a1) * topR;
-        float nmx = (bx0 + bx1) * 0.5f, nmz = (bz0 + bz1) * 0.5f;
-        float nml = sqrtf(nmx * nmx + nmz * nmz);
-        glNormal3f(nmx / nml, 0.0f, nmz / nml);
-        glVertex3f(bx0, 0,      bz0);
-        glVertex3f(bx1, 0,      bz1);
-        glVertex3f(tx1, height, tz1);
-        glVertex3f(tx0, height, tz0);
-    }
-    glEnd();
-    // top cap
-    glBegin(GL_TRIANGLE_FAN);
-    glNormal3f(0, 1, 0);
-    glVertex3f(0, height, 0);
-    for (int i = 0; i <= sides; i++) {
-        float a = (float)i / sides * 2.0f * (float)M_PI;
-        glVertex3f(cosf(a) * topR, height, sinf(a) * topR);
+        float bx0 = cosf(a0)*baseR, bz0 = sinf(a0)*baseR;
+        float bx1 = cosf(a1)*baseR, bz1 = sinf(a1)*baseR;
+        float tx0 = cosf(a0)*topR,  tz0 = sinf(a0)*topR;
+        float tx1 = cosf(a1)*topR,  tz1 = sinf(a1)*topR;
+        float nmx = (bx0+bx1)*0.5f, nmz = (bz0+bz1)*0.5f;
+        float nml = sqrtf(nmx*nmx + nmz*nmz);
+        glNormal3f(nmx/nml, 0, nmz/nml);
+        glVertex3f(bx0,0,bz0); glVertex3f(bx1,0,bz1);
+        glVertex3f(tx1,height,tz1); glVertex3f(tx0,height,tz0);
     }
     glEnd();
 
-    // hub at blade attachment point
-    SetMaterial(0.55f, 0.48f, 0.38f, 16.0f);
+    // ── stone banding rings ───────────────────────────────────────────────────
+    const float bandH[] = {1.0f, 2.0f, 3.0f, 4.0f};
+    SetMaterial(0.60f, 0.52f, 0.40f, 8.0f);
+    for (float bh : bandH) {
+        float br = baseR + (topR - baseR) * (bh / height) + 0.025f;
+        glBegin(GL_QUADS);
+        for (int i = 0; i < sides; i++) {
+            float a0 = (float)i     / sides * 2.0f * (float)M_PI;
+            float a1 = (float)(i+1) / sides * 2.0f * (float)M_PI;
+            float x0=cosf(a0)*br, z0=sinf(a0)*br;
+            float x1=cosf(a1)*br, z1=sinf(a1)*br;
+            float nx=(x0+x1)*0.5f, nz=(z0+z1)*0.5f, nl=sqrtf(nx*nx+nz*nz);
+            glNormal3f(nx/nl, 0, nz/nl);
+            glVertex3f(x0,bh,       z0); glVertex3f(x1,bh,       z1);
+            glVertex3f(x1,bh+0.06f, z1); glVertex3f(x0,bh+0.06f, z0);
+        }
+        glEnd();
+    }
+
+    // ── arched door on +Z face ────────────────────────────────────────────────
+    const float doorZ = 0.41f;
+    // stone arch frame
+    SetMaterial(0.70f, 0.60f, 0.44f, 8.0f);
     glPushMatrix();
-        glTranslatef(0, height, topR + 0.16f);
-        DrawBox(0.32f, 0.32f, 0.32f);
+        glTranslatef(0, 0, doorZ);
+        DrawBox(0.64f, 1.0f, 0.07f);
+        // semicircular arch above rectangle
+        glBegin(GL_TRIANGLE_FAN);
+        glNormal3f(0, 0, 1);
+        glVertex3f(0, 1.0f, 0.035f);
+        for (int i = 0; i <= 10; i++) {
+            float a = (float)M_PI - (float)i / 10.0f * (float)M_PI;
+            glVertex3f(cosf(a)*0.32f, 1.0f + sinf(a)*0.32f, 0.035f);
+        }
+        glEnd();
+    glPopMatrix();
+    // door planks (dark wood, slightly forward)
+    SetMaterial(0.30f, 0.20f, 0.10f, 8.0f);
+    for (int p = -1; p <= 1; p++) {
+        glPushMatrix();
+            glTranslatef(p * 0.175f, 0, doorZ + 0.025f);
+            DrawBox(0.14f, 0.95f, 0.04f);
+        glPopMatrix();
+    }
+    // iron strap hinges
+    SetMaterial(0.20f, 0.18f, 0.16f, 48.0f);
+    {
+        const float hingeY[] = {0.22f, 0.72f};
+        for (float hy : hingeY) {
+            glPushMatrix();
+                glTranslatef(0, hy, doorZ + 0.05f);
+                DrawBox(0.46f, 0.035f, 0.04f);
+            glPopMatrix();
+        }
+    }
+    // threshold stone
+    SetMaterial(0.68f, 0.60f, 0.46f, 12.0f);
+    glPushMatrix();
+        glTranslatef(0, 0, doorZ + 0.07f);
+        DrawBox(0.70f, 0.06f, 0.14f);
     glPopMatrix();
 
-    // four tapered blades
-    SetMaterial(0.85f, 0.78f, 0.58f, 16.0f);
+    // ── stone-framed window on +Z face ────────────────────────────────────────
+    const float winY = 2.40f;
+    const float winZ = baseR + (topR - baseR) * (winY / height) + 0.01f;
+    // stone surround
+    SetMaterial(0.74f, 0.68f, 0.52f, 12.0f);
+    glPushMatrix(); glTranslatef(0, winY+0.56f, winZ); DrawBox(0.64f, 0.10f, 0.08f); glPopMatrix(); // lintel
+    glPushMatrix(); glTranslatef(0, winY-0.04f, winZ); DrawBox(0.72f, 0.09f, 0.10f); glPopMatrix(); // sill
+    glPushMatrix(); glTranslatef(-0.27f, winY, winZ);  DrawBox(0.08f, 0.56f, 0.08f); glPopMatrix(); // left jamb
+    glPushMatrix(); glTranslatef( 0.27f, winY, winZ);  DrawBox(0.08f, 0.56f, 0.08f); glPopMatrix(); // right jamb
+    // glass pane
+    SetMaterial(0.08f, 0.12f, 0.22f, 80.0f);
+    glPushMatrix(); glTranslatef(0, winY, winZ - 0.01f); DrawBox(0.44f, 0.56f, 0.06f); glPopMatrix();
+    // iron window bars
+    SetMaterial(0.20f, 0.18f, 0.16f, 48.0f);
+    glPushMatrix(); glTranslatef(0, winY+0.28f, winZ+0.02f); DrawBox(0.03f, 0.56f, 0.04f); glPopMatrix();
+    glPushMatrix(); glTranslatef(0, winY+0.28f, winZ+0.02f); DrawBox(0.44f, 0.03f, 0.04f); glPopMatrix();
+
+    // ── conical slate cap on tower top ────────────────────────────────────────
+    const int   capSegs = 16;
+    const float capBase = topR + 0.08f, capH = 1.0f;
+    SetMaterial(0.26f, 0.26f, 0.30f, 24.0f);
+    glBegin(GL_TRIANGLES);
+    for (int i = 0; i < capSegs; i++) {
+        float a0 = (float)i       / capSegs * 2.0f * (float)M_PI;
+        float a1 = (float)(i + 1) / capSegs * 2.0f * (float)M_PI;
+        float x0=cosf(a0)*capBase, z0=sinf(a0)*capBase;
+        float x1=cosf(a1)*capBase, z1=sinf(a1)*capBase;
+        triNormal(x0,height,z0, x1,height,z1, 0,height+capH,0);
+        glVertex3f(x0,height,z0); glVertex3f(x1,height,z1); glVertex3f(0,height+capH,0);
+    }
+    glEnd();
+    // underside ring (cap overhang)
+    glBegin(GL_TRIANGLE_STRIP);
+    glNormal3f(0,-1,0);
+    for (int i = 0; i <= capSegs; i++) {
+        float a = (float)i / capSegs * 2.0f * (float)M_PI;
+        glVertex3f(cosf(a)*topR,    height, sinf(a)*topR);
+        glVertex3f(cosf(a)*capBase, height, sinf(a)*capBase);
+    }
+    glEnd();
+    // finial spike at apex
+    SetMaterial(0.14f, 0.13f, 0.15f, 48.0f);
+    glPushMatrix();
+        glTranslatef(0, height + capH, 0);
+        DrawBox(0.04f, 0.38f, 0.04f);
+    glPopMatrix();
+
+    // ── axle shaft (tower top face → hub back) ────────────────────────────────
+    const int   shaftSegs = 8;
+    const float shaftR    = 0.055f, shaftLen = 0.22f;
+    const float shaftZ0   = topR, shaftZ1 = topR + shaftLen;
+    SetMaterial(0.22f, 0.20f, 0.18f, 32.0f);
+    glBegin(GL_QUADS);
+    for (int i = 0; i < shaftSegs; i++) {
+        float a0 = (float)i     / shaftSegs * 2.0f * (float)M_PI;
+        float a1 = (float)(i+1) / shaftSegs * 2.0f * (float)M_PI;
+        float x0=cosf(a0)*shaftR, y0=sinf(a0)*shaftR;
+        float x1=cosf(a1)*shaftR, y1=sinf(a1)*shaftR;
+        float nx=(x0+x1)*0.5f, ny=(y0+y1)*0.5f, nl=sqrtf(nx*nx+ny*ny);
+        glNormal3f(nx/nl, ny/nl, 0);
+        glVertex3f(x0, height+y0, shaftZ0); glVertex3f(x1, height+y1, shaftZ0);
+        glVertex3f(x1, height+y1, shaftZ1); glVertex3f(x0, height+y0, shaftZ1);
+    }
+    glEnd();
+
+    // ── hub disc (octagonal cylinder, face toward viewer) ─────────────────────
+    const int   hubSegs = 8;
+    const float hubR    = 0.22f, hubD = 0.14f;
+    const float hubZ    = shaftZ1 + hubD * 0.5f;
+    SetMaterial(0.40f, 0.30f, 0.18f, 16.0f);
+    // side wall
+    glBegin(GL_QUADS);
+    for (int i = 0; i < hubSegs; i++) {
+        float a0=(float)i    /hubSegs*2.0f*(float)M_PI;
+        float a1=(float)(i+1)/hubSegs*2.0f*(float)M_PI;
+        float x0=cosf(a0)*hubR, y0=sinf(a0)*hubR;
+        float x1=cosf(a1)*hubR, y1=sinf(a1)*hubR;
+        float nx=(x0+x1)*0.5f, ny=(y0+y1)*0.5f, nl=sqrtf(nx*nx+ny*ny);
+        glNormal3f(nx/nl, ny/nl, 0);
+        glVertex3f(x0,height+y0,hubZ-hubD*0.5f); glVertex3f(x1,height+y1,hubZ-hubD*0.5f);
+        glVertex3f(x1,height+y1,hubZ+hubD*0.5f); glVertex3f(x0,height+y0,hubZ+hubD*0.5f);
+    }
+    glEnd();
+    // front cap (+Z)
+    glBegin(GL_TRIANGLE_FAN);
+    glNormal3f(0,0,1);
+    glVertex3f(0, height, hubZ+hubD*0.5f);
+    for (int i = 0; i <= hubSegs; i++) {
+        float a=(float)i/hubSegs*2.0f*(float)M_PI;
+        glVertex3f(cosf(a)*hubR, height+sinf(a)*hubR, hubZ+hubD*0.5f);
+    }
+    glEnd();
+    // back cap (-Z)
+    glBegin(GL_TRIANGLE_FAN);
+    glNormal3f(0,0,-1);
+    glVertex3f(0, height, hubZ-hubD*0.5f);
+    for (int i = hubSegs; i >= 0; i--) {
+        float a=(float)i/hubSegs*2.0f*(float)M_PI;
+        glVertex3f(cosf(a)*hubR, height+sinf(a)*hubR, hubZ-hubD*0.5f);
+    }
+    glEnd();
+    // hub spokes (4 flat bars on front face)
+    SetMaterial(0.32f, 0.24f, 0.12f, 12.0f);
+    for (int s = 0; s < 4; s++) {
+        glPushMatrix();
+            glTranslatef(0, height, hubZ + hubD*0.5f + 0.01f);
+            glRotatef(s * 45.0f, 0, 0, 1);
+            DrawBox(0.04f, hubR*2.0f, 0.03f);
+        glPopMatrix();
+    }
+
+    // ── four tapered blades ───────────────────────────────────────────────────
+    const float bladeStartZ = shaftZ1 + hubD + 0.02f;
     for (int i = 0; i < 4; i++) {
         glPushMatrix();
-            glTranslatef(0, height, topR + 0.32f);
+            glTranslatef(0, height, bladeStartZ);
             glRotatef(windmillAngle + i * 90.0f, 0, 0, 1);
-            glTranslatef(0, 0.16f, 0); // start at hub edge
+            glTranslatef(0, hubR + 0.02f, 0);
+            SetMaterial(0.82f, 0.74f, 0.52f, 16.0f);
             DrawBlade(2.2f, 0.30f, 0.07f);
         glPopMatrix();
     }
+
+    // ── iron ladder on -Z face ────────────────────────────────────────────────
+    const float ldrZ = -((baseR + topR) * 0.5f) - 0.01f;
+    SetMaterial(0.22f, 0.20f, 0.17f, 32.0f);
+    {
+        const float lxVals[] = {-0.12f, 0.12f};
+        for (float lx : lxVals) {
+            glPushMatrix(); glTranslatef(lx, 0, ldrZ); DrawBox(0.02f, 4.0f, 0.04f); glPopMatrix();
+        }
+    }
+    for (int r = 0; r < 12; r++) {
+        float ry = 0.30f + r * (3.7f / 11.0f);
+        glPushMatrix(); glTranslatef(0, ry, ldrZ); DrawBox(0.28f, 0.025f, 0.04f); glPopMatrix();
+    }
+}
+
+// window glow billboard — call from transparent pass inside windmill-local transform
+// rx/ry/rz = camera right world vec, ux/uy/uz = camera up world vec
+void DrawWindmillGlow(float rx, float ry, float rz,
+                      float ux, float uy, float uz) {
+    const float baseR = 0.45f, topR = 0.20f, height = 5.0f;
+    const float wcy   = 2.40f + 0.28f;   // window centre Y
+    const float wcz   = baseR + (topR - baseR) * (wcy / height) + 0.09f; // in front of window
+    glDisable(GL_LIGHTING);
+    glPushMatrix();
+        glTranslatef(0, wcy, wcz);
+        // outer corona
+        glColor4f(1.0f, 0.72f, 0.28f, 0.07f);
+        {
+            const float s = 0.90f;
+            glBegin(GL_QUADS);
+                glVertex3f((-rx+ux)*s,(-ry+uy)*s,(-rz+uz)*s);
+                glVertex3f(( rx+ux)*s,( ry+uy)*s,( rz+uz)*s);
+                glVertex3f(( rx-ux)*s,( ry-uy)*s,( rz-uz)*s);
+                glVertex3f((-rx-ux)*s,(-ry-uy)*s,(-rz-uz)*s);
+            glEnd();
+        }
+        // core glow
+        glColor4f(1.0f, 0.80f, 0.35f, 0.22f);
+        {
+            const float s = 0.50f;
+            glBegin(GL_QUADS);
+                glVertex3f((-rx+ux)*s,(-ry+uy)*s,(-rz+uz)*s);
+                glVertex3f(( rx+ux)*s,( ry+uy)*s,( rz+uz)*s);
+                glVertex3f(( rx-ux)*s,( ry-uy)*s,( rz-uz)*s);
+                glVertex3f((-rx-ux)*s,(-ry-uy)*s,(-rz-uz)*s);
+            glEnd();
+        }
+    glPopMatrix();
+    glEnable(GL_LIGHTING);
+}
+
+void DrawWindmillShadow() {
+    glDisable(GL_LIGHTING);
+    glColor4f(0.0f, 0.0f, 0.0f, 0.38f);
+    glBegin(GL_TRIANGLE_FAN);
+    glNormal3f(0, 1, 0);
+    glVertex3f(0, 0.005f, 0);
+    for (int i = 0; i <= 16; i++) {
+        float a = (float)i / 16.0f * 2.0f * (float)M_PI;
+        glVertex3f(cosf(a)*1.8f, 0.005f, sinf(a)*1.5f);
+    }
+    glEnd();
+    glEnable(GL_LIGHTING);
 }
 
 // ─── fireflies ───────────────────────────────────────────────────────────────

@@ -209,7 +209,11 @@ void OnTimer(int) {
         if (fabsf(bobOffset) < 0.001f) bobOffset = 0.0f;
     }
 
-    if (animOn) windmillAngle += 120.0f * dt;
+    if (animOn) {
+        float t    = nowMs * 0.001f;
+        float wind = 0.65f + 0.35f * sinf(t * 0.11f) * (0.7f + 0.3f * sinf(t * 0.07f));
+        windmillAngle += 110.0f * dt * wind;
+    }
 
     for (auto& p : projectiles) {
         if (!p.active) continue;
@@ -395,12 +399,16 @@ void OnDisplay() {
     DrawScene();
     DrawProjectiles();
 
-    // transparent pass — lantern windows + glow halos
+    // transparent pass — lantern windows + glow halos + windmill shadow/glow
     glEnable(GL_BLEND);
     glDepthMask(GL_FALSE);
 
-    // 1) lantern windows: standard alpha blend
+    // 1) windmill ground shadow + lantern windows: alpha blend
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glPushMatrix();
+        glTranslatef(0, 0, -20);
+        DrawWindmillShadow();
+    glPopMatrix();
     for (auto& l : kLanterns) {
         glPushMatrix();
             glTranslatef(l.x, l.y, l.z);
@@ -408,8 +416,7 @@ void OnDisplay() {
         glPopMatrix();
     }
 
-    // 2) lantern glow halos: additive blend, camera-facing billboard
-    //    read camera right/up from the current modelview (column-major: row 0 = right, row 1 = up)
+    // 2) additive: lantern glow halos + windmill window glow
     {
         float mv[16];
         glGetFloatv(GL_MODELVIEW_MATRIX, mv);
@@ -422,6 +429,10 @@ void OnDisplay() {
                 DrawLanternGlow(rx, ry, rz, ux, uy, uz);
             glPopMatrix();
         }
+        glPushMatrix();
+            glTranslatef(0, 0, -20);
+            DrawWindmillGlow(rx, ry, rz, ux, uy, uz);
+        glPopMatrix();
     }
 
     glDepthMask(GL_TRUE);
