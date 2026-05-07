@@ -136,7 +136,7 @@ void OnInit() {
     glEnable(GL_FOG);
     glFogfv(GL_FOG_COLOR,   fogColor);
     glFogi (GL_FOG_MODE,    GL_EXP2);
-    glFogf (GL_FOG_DENSITY, 0.018f);
+    glFogf (GL_FOG_DENSITY, kFogDensity);
     glHint (GL_FOG_HINT,    GL_NICEST);
 
     // procedural checker texture (64×64)
@@ -155,30 +155,27 @@ void OnInit() {
 
     setTexture("assets/textures/grass.bmp", &texGrass, true);
 
-    // star field: 200 points scattered over the upper hemisphere at radius 80
-    srand(42); // deterministic so screenshots are consistent
-    starCount = 200;
-    for (int i = 0; i < starCount; i++) {
+    // star field — seeded once so CI screenshots are pixel-perfect
+    srand(42);
+    for (int i = 0; i < kStarCount; i++) {
         float theta = ((float)rand() / RAND_MAX) * 2.0f * (float)M_PI;
         float phi   = ((float)rand() / RAND_MAX) * (float)M_PI * 0.5f;
-        float r     = 80.0f;
-        starVerts[i][0] = r * cosf(phi) * cosf(theta);
-        starVerts[i][1] = r * sinf(phi);
-        starVerts[i][2] = r * cosf(phi) * sinf(theta);
-        // twinkle parameters
+        starVerts[i][0] = kStarRadius * cosf(phi) * cosf(theta);
+        starVerts[i][1] = kStarRadius * sinf(phi);
+        starVerts[i][2] = kStarRadius * cosf(phi) * sinf(theta);
         starPhases[i] = ((float)rand() / RAND_MAX) * 6.28f;
         starSpeeds[i] = 0.8f + ((float)rand() / RAND_MAX) * 2.5f;
-        starSizes[i]  = (rand() % 3 == 0) ? 1.0f : 0.0f; // ~1/3 large
+        starSizes[i]  = (rand() % 3 == 0) ? 1.0f : 0.0f;
     }
 
-    // fireflies: scattered around the park interior
+    // fireflies — fully deterministic: evenly-spaced phases, no rand()
     for (int i = 0; i < kFireflyCount; i++) {
-        fireflies[i].x           = (float)(rand() % 30) - 15.0f;
-        fireflies[i].y           = 0.4f + ((float)rand() / RAND_MAX) * 1.1f;
-        fireflies[i].z           = (float)(rand() % 30) - 5.0f;
-        fireflies[i].phase       = ((float)rand() / RAND_MAX) * 6.28f;
-        fireflies[i].speed       = 1.5f + ((float)rand() / RAND_MAX) * 2.0f;
-        fireflies[i].wanderAngle = ((float)rand() / RAND_MAX) * 6.28f;
+        fireflies[i].x           = -15.0f + (i % 4) * 8.0f;
+        fireflies[i].y           = 0.6f;
+        fireflies[i].z           = -10.0f + (i / 4) * 8.0f;
+        fireflies[i].phase       = (float)i * 1.57f;  // π/2 apart
+        fireflies[i].speed       = 1.2f + (i % 3) * 0.4f;
+        fireflies[i].wanderAngle = 0.0f;
     }
 }
 
@@ -189,13 +186,12 @@ void OnTimer(int) {
     if (dt > 0.05f) dt = 0.05f; // clamp: ignore stalls longer than 50ms
     lastMs = nowMs;
 
-    const float speed = 5.0f;
     float dx = 0.0f, dz = 0.0f;
 
-    if (keys['w'] || keys['W'] || keys[GLUT_KEY_UP    + 200]) { dx -= sinf(yaw) * speed * dt; dz -= cosf(yaw) * speed * dt; }
-    if (keys['s'] || keys['S'] || keys[GLUT_KEY_DOWN  + 200]) { dx += sinf(yaw) * speed * dt; dz += cosf(yaw) * speed * dt; }
-    if (keys['a'] || keys['A'] || keys[GLUT_KEY_LEFT  + 200]) { dx -= cosf(yaw) * speed * dt; dz += sinf(yaw) * speed * dt; }
-    if (keys['d'] || keys['D'] || keys[GLUT_KEY_RIGHT + 200]) { dx += cosf(yaw) * speed * dt; dz -= sinf(yaw) * speed * dt; }
+    if (keys['w'] || keys['W'] || keys[GLUT_KEY_UP    + 200]) { dx -= sinf(yaw) * kCamSpeed * dt; dz -= cosf(yaw) * kCamSpeed * dt; }
+    if (keys['s'] || keys['S'] || keys[GLUT_KEY_DOWN  + 200]) { dx += sinf(yaw) * kCamSpeed * dt; dz += cosf(yaw) * kCamSpeed * dt; }
+    if (keys['a'] || keys['A'] || keys[GLUT_KEY_LEFT  + 200]) { dx -= cosf(yaw) * kCamSpeed * dt; dz += sinf(yaw) * kCamSpeed * dt; }
+    if (keys['d'] || keys['D'] || keys[GLUT_KEY_RIGHT + 200]) { dx += cosf(yaw) * kCamSpeed * dt; dz -= sinf(yaw) * kCamSpeed * dt; }
 
     camX += dx;
     camZ += dz;
@@ -203,7 +199,7 @@ void OnTimer(int) {
 
     if (isMoving) {
         bobTimer += dt;
-        bobOffset = sinf(bobTimer * 10.0f) * 0.28f;
+        bobOffset = sinf(bobTimer * kBobFrequency) * kBobAmplitude;
     } else {
         bobOffset *= 0.80f;
         if (fabsf(bobOffset) < 0.001f) bobOffset = 0.0f;
@@ -212,7 +208,7 @@ void OnTimer(int) {
     if (animOn) {
         float t    = nowMs * 0.001f;
         float wind = 0.65f + 0.35f * sinf(t * 0.11f) * (0.7f + 0.3f * sinf(t * 0.07f));
-        windmillAngle += 110.0f * dt * wind;
+        windmillAngle += 45.0f * dt * wind; // believable park-windmill speed
     }
 
     for (auto& p : projectiles) {
@@ -240,15 +236,16 @@ void OnTimer(int) {
         glLightfv(GL_LIGHT3, GL_DIFFUSE, ld);
     }
 
-    // firefly wander
-    for (auto& f : fireflies) {
-        f.wanderAngle += (((float)rand() / RAND_MAX) - 0.5f) * 1.5f * dt;
-        f.x += cosf(f.wanderAngle) * 0.8f * dt;
-        f.z += sinf(f.wanderAngle) * 0.8f * dt;
-        if (f.x < -20.0f) f.x = -20.0f;
-        if (f.x >  20.0f) f.x =  20.0f;
-        if (f.z < -25.0f) f.z = -25.0f;
-        if (f.z >  25.0f) f.z =  25.0f;
+    // deterministic firefly wander — sinusoidal, no rand(), CI-safe
+    {
+        float tff = nowMs * 0.001f;
+        for (int i = 0; i < kFireflyCount; i++) {
+            auto& f        = fireflies[i];
+            f.wanderAngle  = f.phase + sinf(tff * f.speed) * 0.8f;
+            f.x            = -12.0f + 24.0f * (0.5f + 0.5f * sinf(f.wanderAngle));
+            f.z            = -18.0f + 28.0f * (0.5f + 0.5f * cosf(f.wanderAngle * 1.3f));
+            f.y            = 0.6f + 0.5f * sinf(tff * f.speed * 0.7f + f.phase * 1.3f);
+        }
     }
 
 #ifdef DEBUG_CAM
@@ -363,8 +360,15 @@ void OnDisplay() {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
 
+    // sky pass — rotation only, no translation → stars/moon at true infinity
+    glLoadIdentity();
+    glRotatef(-pitch * (180.0f / (float)M_PI), 1.0f, 0.0f, 0.0f);
+    glRotatef(-yaw   * (180.0f / (float)M_PI), 0.0f, 1.0f, 0.0f);
+    DrawSky();
+
+    // world pass — full camera transform
+    glLoadIdentity();
     glRotatef(-pitch * (180.0f / (float)M_PI), 1.0f, 0.0f, 0.0f);
     glRotatef(-yaw   * (180.0f / (float)M_PI), 0.0f, 1.0f, 0.0f);
     glTranslatef(-camX, -(camFloorY + bobOffset), -camZ);
@@ -393,7 +397,6 @@ void OnDisplay() {
         glDisable(GL_LIGHT1);
     }
 
-    DrawSky();
     DrawTerrain();
     DrawPath();
     DrawScene();

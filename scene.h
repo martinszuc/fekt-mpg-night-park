@@ -43,6 +43,16 @@ unsigned int texChecker = 0;
 
 std::string lastAction = "start";
 
+// ─── named constants ─────────────────────────────────────────────────────────
+
+constexpr float kCamSpeed        = 5.0f;
+constexpr float kBobAmplitude    = 0.28f;
+constexpr float kBobFrequency    = 10.0f;
+constexpr float kProjectileSpeed = 20.0f;
+constexpr float kFogDensity      = 0.018f;
+constexpr int   kStarCount       = 200;
+constexpr float kStarRadius      = 80.0f;
+
 // ─── projectiles ─────────────────────────────────────────────────────────────
 
 struct Projectile { float x, y, z, vx, vy, vz, rot; bool active; };
@@ -51,7 +61,7 @@ Projectile projectiles[10] = {};
 void SpawnProjectile() {
     for (auto& p : projectiles) {
         if (p.active) continue;
-        const float spd = 20.0f;
+        constexpr float spd = kProjectileSpeed;
         p.x   = camX; p.y = camFloorY + bobOffset; p.z = camZ;
         p.vx  = -sinf(yaw) * cosf(pitch) * spd;
         p.vy  =  sinf(pitch) * spd;
@@ -65,11 +75,10 @@ void SpawnProjectile() {
 
 // ─── sky ─────────────────────────────────────────────────────────────────────
 
-static float starVerts[200][3];
-static float starPhases[200];   // twinkle phase offset per star
-static float starSpeeds[200];   // twinkle frequency per star
-static float starSizes[200];    // 0 = 1 px, 1 = 2 px
-static int   starCount = 0;
+static float starVerts[kStarCount][3];
+static float starPhases[kStarCount];  // twinkle phase offset per star
+static float starSpeeds[kStarCount];  // twinkle frequency per star
+static float starSizes[kStarCount];   // 0 = 1 px, 1 = 2 px
 
 // moon billboard quad: same direction as GL_LIGHT0 (0.3, 1, 0.2)
 static void DrawMoon() {
@@ -122,28 +131,25 @@ void DrawSky() {
     glDepthMask(GL_FALSE);
     glDisable(GL_FOG);
 
-    // horizon gradient cylinder — centred on camera so it always fills the sky
+    // horizon gradient cylinder — centred at origin (drawn in rotation-only pass)
     {
         const int   segs = 32;
         const float cR   = 75.0f;
         const float cTop = 40.0f, cBot = -5.0f;
-        glPushMatrix();
-        glTranslatef(camX, 0.0f, camZ);
         glBegin(GL_QUADS);
         for (int i = 0; i < segs; i++) {
             float a0 = (float)i       / segs * 2.0f * (float)M_PI;
             float a1 = (float)(i + 1) / segs * 2.0f * (float)M_PI;
             float x0 = cosf(a0) * cR, z0 = sinf(a0) * cR;
             float x1 = cosf(a1) * cR, z1 = sinf(a1) * cR;
-            glColor3f(0.02f, 0.02f, 0.08f); // dark blue-black at top
+            glColor3f(0.02f, 0.02f, 0.08f);
             glVertex3f(x0, cTop, z0);
             glVertex3f(x1, cTop, z1);
-            glColor3f(0.05f, 0.05f, 0.20f); // deep indigo at horizon
+            glColor3f(0.05f, 0.05f, 0.20f);
             glVertex3f(x1, cBot, z1);
             glVertex3f(x0, cBot, z0);
         }
         glEnd();
-        glPopMatrix();
     }
 
     // stars with twinkle — two size passes to avoid mid-primitive glPointSize calls
@@ -151,7 +157,7 @@ void DrawSky() {
 
     glPointSize(1.0f);
     glBegin(GL_POINTS);
-    for (int i = 0; i < starCount; i++) {
+    for (int i = 0; i < kStarCount; i++) {
         if (starSizes[i] >= 0.5f) continue;
         float bright = 0.5f + 0.5f * sinf(t * starSpeeds[i] + starPhases[i]);
         glColor3f(0.88f * bright, 0.90f * bright, bright);
@@ -161,7 +167,7 @@ void DrawSky() {
 
     glPointSize(2.0f);
     glBegin(GL_POINTS);
-    for (int i = 0; i < starCount; i++) {
+    for (int i = 0; i < kStarCount; i++) {
         if (starSizes[i] < 0.5f) continue;
         float bright = 0.5f + 0.5f * sinf(t * starSpeeds[i] + starPhases[i]);
         glColor3f(0.88f * bright, 0.90f * bright, bright);
@@ -1008,11 +1014,12 @@ void DrawScene() {
 // ─── terrain ─────────────────────────────────────────────────────────────────
 
 void DrawTerrain() {
+    // outer edges rise gently; center strip (near path x≈0) stays flat
     static float cp[4][4][3] = {
-        {{-40,2,-40},{-13,0,-40},{ 13,0,-40},{40,2,-40}},
-        {{-40,0,-13},{-13,0,-13},{ 13,0,-13},{40,0,-13}},
-        {{-40,0, 13},{-13,0, 13},{ 13,0, 13},{40,0, 13}},
-        {{-40,2, 40},{-13,0, 40},{ 13,0, 40},{40,2, 40}},
+        {{-40,3.0f,-40},{-13,1.5f,-40},{ 13,0.8f,-40},{40,2.5f,-40}},
+        {{-40,1.5f,-13},{-13,0.0f,-13},{ 13,0.0f,-13},{40,1.0f,-13}},
+        {{-40,1.0f, 13},{-13,0.0f, 13},{ 13,0.0f, 13},{40,1.5f, 13}},
+        {{-40,2.5f, 40},{-13,0.8f, 40},{ 13,1.5f, 40},{40,3.0f, 40}},
     };
     static float tcp[4][4][2] = {
         {{0,0},{1.67f,0},{3.33f,0},{5,0}},
