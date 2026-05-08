@@ -131,6 +131,18 @@ void OnInit() {
         glEnable(li);
     }
 
+    // GL_LIGHT4 — fountain basin (blue-white point, quadratic attenuation)
+    GLfloat fAmb[]  = {0.00f, 0.00f, 0.00f, 1.0f};
+    GLfloat fDif[]  = {0.28f, 0.52f, 0.80f, 1.0f};
+    GLfloat fSpc[]  = {0.35f, 0.60f, 0.90f, 1.0f};
+    glLightfv(GL_LIGHT4, GL_AMBIENT,               fAmb);
+    glLightfv(GL_LIGHT4, GL_DIFFUSE,               fDif);
+    glLightfv(GL_LIGHT4, GL_SPECULAR,              fSpc);
+    glLightf (GL_LIGHT4, GL_CONSTANT_ATTENUATION,  0.5f);
+    glLightf (GL_LIGHT4, GL_LINEAR_ATTENUATION,    0.20f);
+    glLightf (GL_LIGHT4, GL_QUADRATIC_ATTENUATION, 0.10f);
+    glEnable (GL_LIGHT4);
+
     // atmospheric fog — dark blue-black, fades objects beyond ~40 units
     GLfloat fogColor[] = {0.03f, 0.03f, 0.10f, 1.0f};
     glEnable(GL_FOG);
@@ -165,7 +177,9 @@ void OnInit() {
         starVerts[i][2] = kStarRadius * cosf(phi) * sinf(theta);
         starPhases[i] = ((float)rand() / RAND_MAX) * 6.28f;
         starSpeeds[i] = 0.8f + ((float)rand() / RAND_MAX) * 2.5f;
-        starSizes[i]  = (rand() % 3 == 0) ? 1.0f : 0.0f;
+        // 70% small (0), 20% medium (1), 10% large (2)
+        int sr = rand() % 10;
+        starSizes[i] = (sr < 7) ? 0.0f : (sr < 9) ? 1.0f : 2.0f;
     }
 
     // fireflies — fully deterministic: evenly-spaced phases, no rand()
@@ -349,6 +363,12 @@ void OnMenu(int val) {
             lastAction = on ? "lanterns OFF" : "lanterns ON";
             break;
         }
+        case 8: {
+            bool on = glIsEnabled(GL_LIGHT4);
+            on ? glDisable(GL_LIGHT4) : glEnable(GL_LIGHT4);
+            lastAction = on ? "fountain light OFF" : "fountain light ON";
+            break;
+        }
         case 7: exit(0);
     }
     glutPostRedisplay();
@@ -385,6 +405,12 @@ void OnDisplay() {
         glLightfv(lanternLights[i], GL_POSITION, lp);
     }
 
+    // fountain basin light — inside the basin at water surface height
+    {
+        GLfloat fp[] = {0.0f, 0.44f, -2.0f, 1.0f};
+        glLightfv(GL_LIGHT4, GL_POSITION, fp);
+    }
+
     if (torchOn) {
         glEnable(GL_LIGHT1);
         GLfloat lpos[] = {camX, camFloorY + bobOffset, camZ, 1.0f};
@@ -411,7 +437,7 @@ void OnDisplay() {
     // 1) windmill ground shadow + lantern windows: alpha blend
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glPushMatrix();
-        glTranslatef(0, 0, -20);
+        glTranslatef(-4, 0, -24);   // windmill moved to (-4, 0, -24)
         DrawWindmillShadow();
     glPopMatrix();
     for (auto& l : kLanterns) {
@@ -435,8 +461,14 @@ void OnDisplay() {
             glPopMatrix();
         }
         glPushMatrix();
-            glTranslatef(0, 0, -20);
+            glTranslatef(-4, 0, -24);   // windmill moved to (-4, 0, -24)
             DrawWindmillGlow(rx, ry, rz, ux, uy, uz);
+        glPopMatrix();
+
+        // fountain water jet (additive glow)
+        glPushMatrix();
+            glTranslatef(0, 0, -2);
+            DrawFountainWater();
         glPopMatrix();
 
         // lake moon shimmer (additive — soft reflection on water)
@@ -482,8 +514,9 @@ int main(int argc, char* argv[]) {
     glutAddMenuEntry("Textures ON/OFF",  3);
     glutAddMenuEntry("Light ON/OFF",     4);
     glutAddMenuEntry("Torch ON/OFF",     5);
-    glutAddMenuEntry("Lanterns ON/OFF",  6);
-    glutAddMenuEntry("Exit",             7);
+    glutAddMenuEntry("Lanterns ON/OFF",       6);
+    glutAddMenuEntry("Fountain light ON/OFF", 8);
+    glutAddMenuEntry("Exit",                  7);
     glutAttachMenu(GLUT_RIGHT_BUTTON);
 
     OnInit();

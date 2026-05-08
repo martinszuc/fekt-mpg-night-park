@@ -153,15 +153,15 @@ void DrawSky() {
         glEnd();
     }
 
-    // stars with twinkle — two size passes to avoid mid-primitive glPointSize calls
+    // stars with twinkle — three size passes (1 px small, 2 px medium, 3 px large)
     float t = glutGet(GLUT_ELAPSED_TIME) * 0.001f;
 
     glPointSize(1.0f);
     glBegin(GL_POINTS);
     for (int i = 0; i < kStarCount; i++) {
-        if (starSizes[i] >= 0.5f) continue;
-        float bright = 0.5f + 0.5f * sinf(t * starSpeeds[i] + starPhases[i]);
-        glColor3f(0.88f * bright, 0.90f * bright, bright);
+        if (starSizes[i] >= 0.5f) continue;  // size-0 stars
+        float bright = 0.45f + 0.55f * sinf(t * starSpeeds[i] + starPhases[i]);
+        glColor3f(0.86f * bright, 0.89f * bright, bright);
         glVertex3fv(starVerts[i]);
     }
     glEnd();
@@ -169,12 +169,23 @@ void DrawSky() {
     glPointSize(2.0f);
     glBegin(GL_POINTS);
     for (int i = 0; i < kStarCount; i++) {
-        if (starSizes[i] < 0.5f) continue;
-        float bright = 0.5f + 0.5f * sinf(t * starSpeeds[i] + starPhases[i]);
-        glColor3f(0.88f * bright, 0.90f * bright, bright);
+        if (starSizes[i] < 0.5f || starSizes[i] >= 1.5f) continue;  // size-1 stars
+        float bright = 0.55f + 0.45f * sinf(t * starSpeeds[i] + starPhases[i]);
+        glColor3f(0.90f * bright, 0.92f * bright, bright);
         glVertex3fv(starVerts[i]);
     }
     glEnd();
+
+    glPointSize(3.0f);
+    glBegin(GL_POINTS);
+    for (int i = 0; i < kStarCount; i++) {
+        if (starSizes[i] < 1.5f) continue;  // size-2 stars (brightest)
+        float bright = 0.65f + 0.35f * sinf(t * starSpeeds[i] + starPhases[i]);
+        glColor3f(0.94f * bright, 0.95f * bright, bright);
+        glVertex3fv(starVerts[i]);
+    }
+    glEnd();
+    glPointSize(1.0f);
 
     DrawMoon();
 
@@ -965,6 +976,376 @@ void DrawProjectiles() {
 
 // ─── scene assembly ──────────────────────────────────────────────────────────
 
+// ─── stone path ──────────────────────────────────────────────────────────────
+
+void DrawStonePath() {
+    struct SlabSpec { float x, z, w, d, yaw; };
+    static const SlabSpec slabs[] = {
+        // main path: entrance (z≈17) → fountain (z≈-1)
+        {  0.2f, 17.0f, 0.88f, 0.52f,  7.0f },
+        { -0.4f, 15.7f, 0.84f, 0.56f, -5.0f },
+        {  0.5f, 14.4f, 0.90f, 0.50f, 11.0f },
+        { -0.1f, 13.1f, 0.86f, 0.54f, -3.0f },
+        { -0.5f, 11.8f, 0.83f, 0.58f, -8.0f },
+        {  0.2f, 10.5f, 0.89f, 0.52f,  6.0f },
+        {  0.4f,  9.2f, 0.85f, 0.55f, 12.0f },
+        { -0.2f,  8.0f, 0.90f, 0.51f, -4.0f },
+        { -0.3f,  6.7f, 0.82f, 0.57f, -7.0f },
+        {  0.3f,  5.4f, 0.87f, 0.53f,  5.0f },
+        {  0.1f,  4.2f, 0.85f, 0.56f,  3.0f },
+        { -0.4f,  2.9f, 0.88f, 0.52f, -6.0f },
+        {  0.2f,  1.7f, 0.84f, 0.55f,  8.0f },
+        { -0.1f,  0.4f, 0.87f, 0.53f, -2.0f },
+        {  0.0f, -1.0f, 0.90f, 0.54f,  4.0f },
+        // left fork — toward benches
+        { -2.0f,  0.2f, 0.74f, 0.50f,-20.0f },
+        { -3.5f,  0.0f, 0.72f, 0.52f,-35.0f },
+        // right fork — toward shed
+        {  2.2f,  0.5f, 0.74f, 0.50f, 22.0f },
+        {  3.8f, -0.8f, 0.70f, 0.52f, 38.0f },
+        // extension toward lake and bridge
+        { -1.5f, -2.5f, 0.80f, 0.52f,-12.0f },
+        { -3.0f, -4.0f, 0.77f, 0.54f,-18.0f },
+        { -4.5f, -5.2f, 0.74f, 0.52f,-22.0f },
+        { -6.0f, -6.2f, 0.72f, 0.53f,-28.0f },
+        { -7.5f, -7.0f, 0.70f, 0.52f,-22.0f },
+        { -9.0f, -7.8f, 0.68f, 0.51f,-18.0f },
+    };
+    GLfloat slabSpec[] = {0.55f, 0.55f, 0.55f, 1.0f};
+    for (int si = 0; si < (int)(sizeof(slabs)/sizeof(slabs[0])); si++) {
+        const auto& s = slabs[si];
+        // alternate two grey tones for visual variety
+        if (si % 2 == 0) SetMaterial(0.52f, 0.50f, 0.46f, 32.0f);
+        else             SetMaterial(0.46f, 0.44f, 0.40f, 32.0f);
+        glMaterialfv(GL_FRONT, GL_SPECULAR, slabSpec);
+        glPushMatrix();
+            glTranslatef(s.x, 0.0f, s.z);
+            glRotatef(s.yaw, 0, 1, 0);
+            DrawBox(s.w, 0.06f, s.d);
+        glPopMatrix();
+    }
+}
+
+// ─── fountain ────────────────────────────────────────────────────────────────
+
+void DrawFountain() {
+    const int   bSegs = 16;
+    const float bRi   = 0.80f, bRo = 1.30f, bH = 0.40f;
+
+    // outer basin wall
+    SetMaterial(0.68f, 0.62f, 0.52f, 12.0f);
+    glBegin(GL_QUADS);
+    for (int i = 0; i < bSegs; i++) {
+        float a0 = (float)i / bSegs * 2.0f * (float)M_PI;
+        float a1 = (float)(i+1) / bSegs * 2.0f * (float)M_PI;
+        float x0 = cosf(a0)*bRo, z0 = sinf(a0)*bRo;
+        float x1 = cosf(a1)*bRo, z1 = sinf(a1)*bRo;
+        float nx = (x0+x1)*0.5f, nz = (z0+z1)*0.5f, nl = sqrtf(nx*nx+nz*nz);
+        glNormal3f(nx/nl, 0, nz/nl);
+        glVertex3f(x0,0,z0); glVertex3f(x1,0,z1);
+        glVertex3f(x1,bH,z1); glVertex3f(x0,bH,z0);
+    }
+    glEnd();
+
+    // rim (top ring)
+    glBegin(GL_TRIANGLE_STRIP);
+    glNormal3f(0,1,0);
+    for (int i = 0; i <= bSegs; i++) {
+        float a = (float)i / bSegs * 2.0f * (float)M_PI;
+        glVertex3f(cosf(a)*bRo, bH, sinf(a)*bRo);
+        glVertex3f(cosf(a)*bRi, bH, sinf(a)*bRi);
+    }
+    glEnd();
+
+    // inner basin wall
+    glBegin(GL_QUADS);
+    for (int i = 0; i < bSegs; i++) {
+        float a0 = (float)i / bSegs * 2.0f * (float)M_PI;
+        float a1 = (float)(i+1) / bSegs * 2.0f * (float)M_PI;
+        float x0 = cosf(a0)*bRi, z0 = sinf(a0)*bRi;
+        float x1 = cosf(a1)*bRi, z1 = sinf(a1)*bRi;
+        float nx = -(x0+x1)*0.5f, nz = -(z0+z1)*0.5f, nl = sqrtf(nx*nx+nz*nz);
+        glNormal3f(nx/nl, 0, nz/nl);
+        glVertex3f(x1,bH,z1); glVertex3f(x0,bH,z0);
+        glVertex3f(x0,0.04f,z0); glVertex3f(x1,0.04f,z1);
+    }
+    glEnd();
+
+    // basin floor
+    glBegin(GL_TRIANGLE_FAN);
+    glNormal3f(0,1,0);
+    glVertex3f(0, 0.04f, 0);
+    for (int i = 0; i <= bSegs; i++) {
+        float a = (float)i / bSegs * 2.0f * (float)M_PI;
+        glVertex3f(cosf(a)*bRi, 0.04f, sinf(a)*bRi);
+    }
+    glEnd();
+
+    // water surface — dark teal, high specular, ripple
+    {
+        GLfloat wa[] = {0.01f,0.05f,0.12f,1}; GLfloat wd[] = {0.04f,0.10f,0.24f,1};
+        GLfloat ws[] = {0.72f,0.80f,0.95f,1};
+        glMaterialfv(GL_FRONT,GL_AMBIENT,  wa);
+        glMaterialfv(GL_FRONT,GL_DIFFUSE,  wd);
+        glMaterialfv(GL_FRONT,GL_SPECULAR, ws);
+        glMaterialf (GL_FRONT,GL_SHININESS,90.0f);
+    }
+    glBegin(GL_TRIANGLE_FAN);
+    glNormal3f(0,1,0);
+    glVertex3f(0, bH-0.03f, 0);
+    for (int i = 0; i <= bSegs; i++) {
+        float a  = (float)i / bSegs * 2.0f * (float)M_PI;
+        float vy = bH - 0.03f + 0.010f * sinf(rippleTime*1.6f + cosf(a)*2.2f);
+        glVertex3f(cosf(a)*(bRi-0.05f), vy, sinf(a)*(bRi-0.05f));
+    }
+    glEnd();
+
+    // central pedestal (8-sided cylinder)
+    const int   pSegs = 8;
+    const float pR    = 0.14f, pBot = bH, pTop = 0.95f;
+    SetMaterial(0.70f, 0.64f, 0.54f, 16.0f);
+    glBegin(GL_QUADS);
+    for (int i = 0; i < pSegs; i++) {
+        float a0 = (float)i / pSegs * 2.0f * (float)M_PI;
+        float a1 = (float)(i+1) / pSegs * 2.0f * (float)M_PI;
+        float x0 = cosf(a0)*pR, z0 = sinf(a0)*pR;
+        float x1 = cosf(a1)*pR, z1 = sinf(a1)*pR;
+        float nx = (x0+x1)*0.5f, nz = (z0+z1)*0.5f, nl = sqrtf(nx*nx+nz*nz);
+        glNormal3f(nx/nl, 0, nz/nl);
+        glVertex3f(x0,pBot,z0); glVertex3f(x1,pBot,z1);
+        glVertex3f(x1,pTop,z1); glVertex3f(x0,pTop,z0);
+    }
+    glEnd();
+
+    // pedestal cap disc
+    const float pcR = 0.22f;
+    glBegin(GL_TRIANGLE_FAN);
+    glNormal3f(0,1,0);
+    glVertex3f(0, pTop, 0);
+    for (int i = 0; i <= pSegs; i++) {
+        float a = (float)i / pSegs * 2.0f * (float)M_PI;
+        glVertex3f(cosf(a)*pcR, pTop, sinf(a)*pcR);
+    }
+    glEnd();
+    // cap underside
+    glBegin(GL_TRIANGLE_FAN);
+    glNormal3f(0,-1,0);
+    glVertex3f(0, pTop-0.04f, 0);
+    for (int i = pSegs; i >= 0; i--) {
+        float a = (float)i / pSegs * 2.0f * (float)M_PI;
+        glVertex3f(cosf(a)*pcR, pTop-0.04f, sinf(a)*pcR);
+    }
+    glEnd();
+}
+
+// Transparent-pass additive water jet column.  Call with additive blend active.
+void DrawFountainWater() {
+    glDisable(GL_LIGHTING);
+    // stacked horizontal discs — shrinking radius and alpha going up
+    for (int j = 0; j < 6; j++) {
+        float frac  = (float)j / 5.0f;
+        float y     = 0.96f + j * 0.15f;
+        float r     = 0.18f * (1.0f - frac*0.65f)
+                    + 0.03f * sinf(rippleTime*2.2f + (float)j);
+        float alpha = 0.32f * (1.0f - frac*0.88f);
+        glColor4f(0.62f, 0.82f, 1.0f, alpha);
+        glBegin(GL_TRIANGLE_FAN);
+        glVertex3f(0, y, 0);
+        for (int i = 0; i <= 12; i++) {
+            float a = (float)i / 12.0f * 2.0f * (float)M_PI;
+            glVertex3f(cosf(a)*r, y, sinf(a)*r);
+        }
+        glEnd();
+    }
+    // base splash oval at water surface
+    glColor4f(0.50f, 0.76f, 1.0f, 0.14f);
+    glBegin(GL_TRIANGLE_FAN);
+    glVertex3f(0, 0.385f, 0);
+    for (int i = 0; i <= 16; i++) {
+        float a = (float)i / 16.0f * 2.0f * (float)M_PI;
+        float r = 0.52f + 0.07f * sinf(rippleTime*1.9f + a*3.0f);
+        glVertex3f(cosf(a)*r, 0.385f, sinf(a)*r);
+    }
+    glEnd();
+    glEnable(GL_LIGHTING);
+}
+
+// ─── bridge ──────────────────────────────────────────────────────────────────
+
+void DrawBridge() {
+    // Spans X-axis from x=-8.5 to x=-11.5 at z=-8, crossing lake inlet
+    const float bx  = -10.0f;   // centre X
+    const float bz  =  -8.0f;   // Z position
+    const float len =   3.0f;
+
+    // deck planks
+    SetMaterial(0.55f, 0.40f, 0.22f, 8.0f);
+    for (int p = -1; p <= 1; p++) {
+        glPushMatrix();
+            glTranslatef(bx, 0.0f, bz + p*0.29f);
+            DrawBox(len, 0.07f, 0.27f);
+        glPopMatrix();
+    }
+
+    // side railings — top rail + 5 balusters each side
+    SetMaterial(0.42f, 0.30f, 0.14f, 16.0f);
+    for (int side = -1; side <= 1; side += 2) {
+        glPushMatrix();
+            glTranslatef(bx, 0.72f, bz + side*0.50f);
+            DrawBox(len, 0.06f, 0.06f);
+        glPopMatrix();
+        for (int b = 0; b < 5; b++) {
+            float px = bx - len*0.5f + (b+0.5f)*(len/5.0f);
+            glPushMatrix();
+                glTranslatef(px, 0.0f, bz + side*0.50f);
+                DrawBox(0.05f, 0.72f, 0.05f);
+            glPopMatrix();
+        }
+    }
+
+    // under-deck support beams
+    SetMaterial(0.35f, 0.25f, 0.12f, 4.0f);
+    for (int side = -1; side <= 1; side += 2) {
+        glPushMatrix();
+            glTranslatef(bx, 0.0f, bz + side*0.34f);
+            DrawBox(len+0.20f, 0.12f, 0.10f);
+        glPopMatrix();
+    }
+}
+
+// ─── flowers / ground cover ──────────────────────────────────────────────────
+
+void DrawFlowerBed(float cx, float cz, int seed) {
+    for (int i = 0; i < 12; i++) {
+        float angle = (float)i / 12.0f * 2.0f * (float)M_PI + seed * 0.42f;
+        float dist  = 0.22f + 0.32f * fabsf(sinf((float)i * 1.618f + seed));
+        float fx    = cx + cosf(angle) * dist;
+        float fz    = cz + sinf(angle) * dist;
+        float stemH = 0.16f + 0.12f * fabsf(sinf((float)i * 2.1f + seed * 0.7f));
+
+        // stem
+        SetMaterial(0.20f, 0.44f, 0.12f, 4.0f);
+        glPushMatrix();
+            glTranslatef(fx, 0.0f, fz);
+            DrawBox(0.016f, stemH, 0.016f);
+        glPopMatrix();
+
+        // petal disc (colour varies by seed+i)
+        float fr = 0.65f + 0.35f * fabsf(sinf((float)(seed+i) * 1.31f));
+        float fg = 0.20f + 0.40f * fabsf(sinf((float)(seed+i) * 0.87f));
+        float fb = 0.05f + 0.55f * fabsf(sinf((float)(seed+i) * 2.13f));
+        SetMaterial(fr, fg, fb, 8.0f);
+        glPushMatrix();
+            glTranslatef(fx, stemH + 0.04f, fz);
+            glBegin(GL_TRIANGLE_FAN);
+            glNormal3f(0, 1, 0);
+            glVertex3f(0, 0, 0);
+            for (int p = 0; p <= 6; p++) {
+                float pa = (float)p / 6.0f * 2.0f * (float)M_PI;
+                glVertex3f(cosf(pa)*0.055f, 0, sinf(pa)*0.055f);
+            }
+            glEnd();
+        glPopMatrix();
+    }
+}
+
+static void DrawGrassTuft(float x, float z) {
+    SetMaterial(0.18f, 0.34f, 0.10f, 2.0f);
+    // 2 crossing quads; disable culling so both sides lit
+    glDisable(GL_CULL_FACE);
+    const float hw = 0.05f, hh = 0.32f;
+    glPushMatrix();
+    glTranslatef(x, 0, z);
+    glBegin(GL_QUADS);
+        // quad along X
+        glNormal3f(0, 0, 1);
+        glVertex3f(-hw, 0,   0); glVertex3f( hw, 0,   0);
+        glVertex3f( hw, hh*2, 0); glVertex3f(-hw, hh*2, 0);
+        glNormal3f(0, 0, -1);
+        glVertex3f( hw, 0,   0); glVertex3f(-hw, 0,   0);
+        glVertex3f(-hw, hh*2, 0); glVertex3f( hw, hh*2, 0);
+        // quad along Z
+        glNormal3f(1, 0, 0);
+        glVertex3f(0, 0,  -hw); glVertex3f(0, 0,   hw);
+        glVertex3f(0, hh*2, hw); glVertex3f(0, hh*2, -hw);
+        glNormal3f(-1, 0, 0);
+        glVertex3f(0, 0,   hw); glVertex3f(0, 0,  -hw);
+        glVertex3f(0, hh*2,-hw); glVertex3f(0, hh*2, hw);
+    glEnd();
+    glPopMatrix();
+    glEnable(GL_CULL_FACE);
+}
+
+// ─── ducks ───────────────────────────────────────────────────────────────────
+
+static void DrawDuck(float x, float z, float baseYaw) {
+    float yaw = baseYaw + rippleTime * 0.15f;
+    glPushMatrix();
+    glTranslatef(x, -0.04f, z);
+    glRotatef(yaw * (180.0f / (float)M_PI), 0, 1, 0);
+
+    // body (squashed)
+    SetMaterial(0.15f, 0.12f, 0.09f, 4.0f);
+    glPushMatrix();
+        glTranslatef(0, 0.09f, 0);
+        glScalef(1.0f, 0.55f, 1.0f);
+        DrawBox(0.22f, 0.18f, 0.32f);
+    glPopMatrix();
+    // head (green mallard)
+    SetMaterial(0.09f, 0.22f, 0.09f, 4.0f);
+    glPushMatrix();
+        glTranslatef(0.10f, 0.21f, 0);
+        DrawBox(0.13f, 0.14f, 0.14f);
+    glPopMatrix();
+    // bill (orange)
+    SetMaterial(0.82f, 0.54f, 0.04f, 8.0f);
+    glPushMatrix();
+        glTranslatef(0.19f, 0.21f, 0);
+        DrawBox(0.10f, 0.05f, 0.08f);
+    glPopMatrix();
+    // tail uptilt
+    SetMaterial(0.15f, 0.12f, 0.09f, 4.0f);
+    glPushMatrix();
+        glTranslatef(-0.12f, 0.18f, 0);
+        glRotatef(-38.0f, 0, 0, 1);
+        DrawBox(0.06f, 0.13f, 0.10f);
+    glPopMatrix();
+
+    glPopMatrix();
+}
+
+// ─── notice board ────────────────────────────────────────────────────────────
+
+void DrawNoticeBoard() {
+    // Posts
+    SetMaterial(0.38f, 0.26f, 0.12f, 8.0f);
+    for (int side = -1; side <= 1; side += 2) {
+        glPushMatrix();
+            glTranslatef(side * 0.40f, 0, 0);
+            DrawBox(0.07f, 1.45f, 0.07f);
+        glPopMatrix();
+    }
+    // Board panel — light pine wood
+    SetMaterial(0.72f, 0.58f, 0.36f, 12.0f);
+    glPushMatrix();
+        glTranslatef(0, 1.15f, 0);
+        DrawBox(0.84f, 0.56f, 0.07f);
+    glPopMatrix();
+    // Roof overhang
+    SetMaterial(0.35f, 0.24f, 0.10f, 8.0f);
+    glPushMatrix();
+        glTranslatef(0, 1.50f, 0);
+        DrawBox(0.96f, 0.05f, 0.16f);
+    glPopMatrix();
+    // Dark border frame around panel face (4 thin strips at z offset)
+    SetMaterial(0.22f, 0.16f, 0.08f, 16.0f);
+    const float fz = 0.072f;
+    glPushMatrix(); glTranslatef(0,      1.72f, fz); DrawBox(0.80f, 0.04f, 0.04f); glPopMatrix(); // top
+    glPushMatrix(); glTranslatef(0,      1.18f, fz); DrawBox(0.80f, 0.04f, 0.04f); glPopMatrix(); // bottom
+    glPushMatrix(); glTranslatef(-0.40f, 1.44f, fz); DrawBox(0.04f, 0.56f, 0.04f); glPopMatrix(); // left
+    glPushMatrix(); glTranslatef( 0.40f, 1.44f, fz); DrawBox(0.04f, 0.56f, 0.04f); glPopMatrix(); // right
+}
+
 // ─── lake ────────────────────────────────────────────────────────────────────
 
 // Single cattail reed: stem + seed head.
@@ -1064,13 +1445,20 @@ void DrawLakeMoonShimmer() {
 }
 
 void DrawScene() {
+    // ── stone path ────────────────────────────────────────────────────────────
+    DrawStonePath();
+
+    // ── trees ─────────────────────────────────────────────────────────────────
     struct TreeSpec { float x, z, scale, yaw; };
     static const TreeSpec trees[] = {
-        {-5,  -5, 1.00f,   0.0f},
-        { 8,  -3, 1.30f,  40.0f},
-        {-10,  5, 0.85f, 120.0f},
-        { 3,  10, 1.15f,  70.0f},
-        {-2,  15, 1.00f, 200.0f},
+        { -5.0f,  -5.0f, 1.00f,   0.0f },
+        {  8.0f,  -3.0f, 1.30f,  40.0f },
+        {-10.0f,   5.0f, 0.85f, 120.0f },
+        {  3.0f,  10.0f, 1.15f,  70.0f },
+        { -2.0f,  15.0f, 1.00f, 200.0f },
+        {-18.0f,  -5.0f, 1.10f,  55.0f },  // near lake shore
+        {-20.0f,   2.0f, 0.90f, 160.0f },
+        { 10.0f, -15.0f, 1.05f,  90.0f },  // behind windmill
     };
     for (auto& t : trees) {
         glPushMatrix();
@@ -1081,18 +1469,25 @@ void DrawScene() {
         glPopMatrix();
     }
 
-    // benches
+    // ── fountain (park centrepiece) ───────────────────────────────────────────
     glPushMatrix();
-        glTranslatef(0, 0, 0);
+        glTranslatef(0, 0, -2);
+        DrawFountain();
+    glPopMatrix();
+
+    // ── benches — facing the fountain ────────────────────────────────────────
+    glPushMatrix();
+        glTranslatef(-4.0f, 0, 0.5f);
+        glRotatef( 30, 0, 1, 0);
         DrawBench();
     glPopMatrix();
     glPushMatrix();
-        glTranslatef(6, 0, -2);
-        glRotatef(45, 0, 1, 0);
+        glTranslatef( 4.0f, 0, -0.5f);
+        glRotatef(-30, 0, 1, 0);
         DrawBench();
     glPopMatrix();
 
-    // lanterns
+    // ── lanterns ──────────────────────────────────────────────────────────────
     for (auto& l : kLanterns) {
         glPushMatrix();
             glTranslatef(l.x, l.y, l.z);
@@ -1100,36 +1495,62 @@ void DrawScene() {
         glPopMatrix();
     }
 
-    // shed
+    // ── shed ──────────────────────────────────────────────────────────────────
     glPushMatrix();
         glTranslatef(12, 0, -8);
         DrawShed();
     glPopMatrix();
 
-    // boulder cluster near (-8, 0, 8)
-    glPushMatrix(); glTranslatef(-8.0f, 0,  8.0f); DrawBoulder(); glPopMatrix();
-    glPushMatrix(); glTranslatef(-9.5f, 0,  7.0f); glScalef(0.4f, 0.4f, 0.4f); DrawBoulder(); glPopMatrix();
-    glPushMatrix(); glTranslatef(-7.0f, 0,  9.0f); glScalef(0.3f, 0.3f, 0.3f); DrawBoulder(); glPopMatrix();
-    glPushMatrix(); glTranslatef(-8.5f, 0,  9.5f); glScalef(0.5f, 0.5f, 0.5f); DrawBoulder(); glPopMatrix();
-    // second boulder
-    glPushMatrix(); glTranslatef( 2.0f, 0, -10.0f); DrawBoulder(); glPopMatrix();
+    // ── boulder cluster ───────────────────────────────────────────────────────
+    glPushMatrix(); glTranslatef(-8.0f, 0,  8.0f);                            DrawBoulder(); glPopMatrix();
+    glPushMatrix(); glTranslatef(-9.5f, 0,  7.0f); glScalef(0.4f,0.4f,0.4f); DrawBoulder(); glPopMatrix();
+    glPushMatrix(); glTranslatef(-7.0f, 0,  9.0f); glScalef(0.3f,0.3f,0.3f); DrawBoulder(); glPopMatrix();
+    glPushMatrix(); glTranslatef(-8.5f, 0,  9.5f); glScalef(0.5f,0.5f,0.5f); DrawBoulder(); glPopMatrix();
+    glPushMatrix(); glTranslatef( 2.0f, 0,-10.0f);                            DrawBoulder(); glPopMatrix();
 
-    // fence
+    // ── fence ─────────────────────────────────────────────────────────────────
     glPushMatrix();
         glTranslatef(-6, 0, -15);
         DrawFence(10, 1.2f);
     glPopMatrix();
 
-    // windmill
+    // ── windmill (offset from centre axis) ───────────────────────────────────
     glPushMatrix();
-        glTranslatef(0, 0, -20);
+        glTranslatef(-4, 0, -24);
         DrawWindmill();
     glPopMatrix();
 
-    // lake
+    // ── lake + bridge + ducks ─────────────────────────────────────────────────
     DrawLake();
+    DrawBridge();
+    DrawDuck(-12.0f, -7.0f, 0.0f);
+    DrawDuck(-15.5f, -9.5f, 1.6f);
+    DrawDuck(-16.8f, -5.8f, 3.2f);
 
-    // fireflies
+    // ── notice board near entrance ────────────────────────────────────────────
+    glPushMatrix();
+        glTranslatef(3.5f, 0, 16.0f);
+        glRotatef(170, 0, 1, 0);
+        DrawNoticeBoard();
+    glPopMatrix();
+
+    // ── flower beds ───────────────────────────────────────────────────────────
+    DrawFlowerBed(-3.5f,  3.0f,  0);
+    DrawFlowerBed( 3.2f,  3.5f,  3);
+    DrawFlowerBed(-1.2f, -0.8f,  7);
+    DrawFlowerBed( 1.0f, -4.0f, 12);
+
+    // ── tall grass tufts — path edges and lake shore approach ─────────────────
+    static const float tufts[][2] = {
+        { 1.5f,  8.0f}, {-1.8f,  7.2f}, { 2.1f,  5.5f}, {-1.4f,  4.8f},
+        { 1.7f,  3.0f}, {-2.2f,  2.5f}, {-5.5f, -4.0f}, {-6.8f, -5.5f},
+        {-8.2f, -6.0f}, {-5.0f, -6.8f}, {-7.5f, -4.5f}, {-9.5f, -5.2f},
+        {-11.0f,-4.8f}, {-12.5f,-3.5f}, {-13.0f,-5.5f}, {-16.5f,-2.0f},
+        {-17.5f,-6.5f}, {-15.0f,-13.5f},{-11.5f,-13.0f},{-18.5f,-10.0f},
+    };
+    for (auto& g : tufts) DrawGrassTuft(g[0], g[1]);
+
+    // ── fireflies ─────────────────────────────────────────────────────────────
     DrawFireflies();
 }
 
