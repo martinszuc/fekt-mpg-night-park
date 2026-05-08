@@ -36,6 +36,7 @@ float camFloorY = 1.7f;
 bool  torchOn       = false;
 bool  animOn        = true;
 float windmillAngle = 0.0f;
+float rippleTime    = 0.0f;   // driven by OnTimer: rippleTime += dt
 
 bool         texOn      = true;
 unsigned int texGrass   = 0;
@@ -964,6 +965,104 @@ void DrawProjectiles() {
 
 // ─── scene assembly ──────────────────────────────────────────────────────────
 
+// ─── lake ────────────────────────────────────────────────────────────────────
+
+// Single cattail reed: stem + seed head.
+static void DrawReed(float x, float z) {
+    SetMaterial(0.22f, 0.38f, 0.12f, 4.0f);
+    glPushMatrix();
+        glTranslatef(x, 0.0f, z);
+        DrawBox(0.025f, 0.85f, 0.025f);
+        SetMaterial(0.26f, 0.15f, 0.07f, 4.0f);
+        glPushMatrix();
+            glTranslatef(0.0f, 0.85f + 0.10f, 0.0f);
+            DrawBox(0.045f, 0.20f, 0.045f);
+        glPopMatrix();
+    glPopMatrix();
+}
+
+// Opaque parts: shore gravel ring + animated water surface + shore reeds.
+void DrawLake() {
+    const float cx   = -14.0f, cz = -8.0f;
+    const float rx   =   6.5f, rz =  5.0f;
+    const int   segs = 32;
+    const float wY   = -0.08f;
+
+    // 1. Shore gravel ring
+    SetMaterial(0.26f, 0.24f, 0.21f, 6.0f);
+    glBegin(GL_TRIANGLE_STRIP);
+    glNormal3f(0, 1, 0);
+    for (int i = 0; i <= segs; i++) {
+        float a = (float)i / segs * 2.0f * (float)M_PI;
+        float ca = cosf(a), sa = sinf(a);
+        glVertex3f(cx + ca*(rx+0.65f), 0.005f, cz + sa*(rz+0.65f));
+        glVertex3f(cx + ca* rx,        0.005f, cz + sa* rz);
+    }
+    glEnd();
+
+    // 2. Water surface — dark navy, high specular (looks reflective), gentle ripple
+    {
+        GLfloat wAmb[]  = {0.01f, 0.04f, 0.10f, 1.0f};
+        GLfloat wDiff[] = {0.03f, 0.09f, 0.22f, 1.0f};
+        GLfloat wSpec[] = {0.75f, 0.82f, 0.96f, 1.0f};
+        glMaterialfv(GL_FRONT, GL_AMBIENT,   wAmb);
+        glMaterialfv(GL_FRONT, GL_DIFFUSE,   wDiff);
+        glMaterialfv(GL_FRONT, GL_SPECULAR,  wSpec);
+        glMaterialf (GL_FRONT, GL_SHININESS, 96.0f);
+    }
+    glBegin(GL_TRIANGLE_FAN);
+        glNormal3f(0, 1, 0);
+        glVertex3f(cx, wY, cz);
+        for (int i = 0; i <= segs; i++) {
+            float a  = (float)i / segs * 2.0f * (float)M_PI;
+            float vx = cx + cosf(a) * rx;
+            float vz = cz + sinf(a) * rz;
+            // two overlapping sine waves — organic, not mechanical
+            float vy = wY
+                     + 0.020f * sinf(rippleTime * 1.3f + vx * 0.55f)
+                     + 0.012f * sinf(rippleTime * 0.8f + vz * 0.72f);
+            glVertex3f(vx, vy, vz);
+        }
+    glEnd();
+
+    // 3. Shore reeds — 22 reeds, deterministic positions just outside water edge
+    for (int i = 0; i < 22; i++) {
+        float angle = (float)i / 22.0f * 2.0f * (float)M_PI + 0.42f;
+        float push  = 0.60f + 0.30f * sinf((float)i * 1.618f)
+                            + 0.18f * cosf((float)i * 2.399f);
+        float sx = cx + cosf(angle) * (rx + push);
+        float sz = cz + sinf(angle) * (rz + push * (rz / rx));
+        DrawReed(sx, sz);
+    }
+}
+
+// Transparent-pass additive billboard — moon's reflection on the water.
+// Call with additive blend already enabled; restores GL_LIGHTING state.
+void DrawLakeMoonShimmer() {
+    const float ox = -14.0f - 1.5f;   // reflection offset toward moon direction
+    const float oz =  -8.0f - 1.8f;
+    glDisable(GL_LIGHTING);
+    // inner bright oval
+    glColor4f(0.82f, 0.88f, 1.0f, 0.22f + 0.06f * sinf(rippleTime * 1.1f));
+    glBegin(GL_TRIANGLE_FAN);
+        glVertex3f(ox, -0.04f, oz);
+        for (int i = 0; i <= 24; i++) {
+            float a = (float)i / 24.0f * 2.0f * (float)M_PI;
+            glVertex3f(ox + cosf(a)*1.2f, -0.04f, oz + sinf(a)*0.40f);
+        }
+    glEnd();
+    // soft outer corona
+    glColor4f(0.70f, 0.78f, 1.0f, 0.07f);
+    glBegin(GL_TRIANGLE_FAN);
+        glVertex3f(ox, -0.04f, oz);
+        for (int i = 0; i <= 24; i++) {
+            float a = (float)i / 24.0f * 2.0f * (float)M_PI;
+            glVertex3f(ox + cosf(a)*2.2f, -0.04f, oz + sinf(a)*0.80f);
+        }
+    glEnd();
+    glEnable(GL_LIGHTING);
+}
+
 void DrawScene() {
     struct TreeSpec { float x, z, scale, yaw; };
     static const TreeSpec trees[] = {
@@ -1026,6 +1125,9 @@ void DrawScene() {
         glTranslatef(0, 0, -20);
         DrawWindmill();
     glPopMatrix();
+
+    // lake
+    DrawLake();
 
     // fireflies
     DrawFireflies();

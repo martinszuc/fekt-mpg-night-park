@@ -211,6 +211,8 @@ void OnTimer(int) {
         windmillAngle += 45.0f * dt * wind; // believable park-windmill speed
     }
 
+    rippleTime += dt;
+
     for (auto& p : projectiles) {
         if (!p.active) continue;
         p.vy  -= 9.8f * dt;
@@ -436,6 +438,9 @@ void OnDisplay() {
             glTranslatef(0, 0, -20);
             DrawWindmillGlow(rx, ry, rz, ux, uy, uz);
         glPopMatrix();
+
+        // lake moon shimmer (additive — soft reflection on water)
+        DrawLakeMoonShimmer();
     }
 
     glDepthMask(GL_TRUE);
