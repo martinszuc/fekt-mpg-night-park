@@ -550,51 +550,71 @@ void DrawFence(int count, float spacing) {
     glPopMatrix();
 }
 
-// tapered blade: wider at root (y=0), narrower at tip (y=len)
-// spine spar and cross-braces added on the front face (+Z side)
+// Proper windmill sail: wide canvas panel on a wooden lattice frame.
+// +Y = tip (away from hub), +Z = front face.
+// rootW should be ~0.75; tip is 55% of root for a gentle taper, NOT a spike.
 static void DrawBlade(float len, float rootW, float depth) {
-    float hr = rootW * 0.5f;
-    float ht = rootW * 0.12f;
-    float hd = depth * 0.5f;
-    float sideN = len, sideNy = hr - ht;
-    float sideNl = sqrtf(sideN * sideN + sideNy * sideNy);
+    const float hr  = rootW * 0.5f;         // half-width at root
+    const float ht  = rootW * 0.5f * 0.55f; // half-width at tip (55% — wide, not spiked)
+    const float hd  = depth * 0.5f;
 
-    // main blade body
+    // outward normal for tapered side edges: perpendicular to (ht-hr, len)
+    const float snl = sqrtf(len*len + (hr-ht)*(hr-ht));
+    const float snx =  len    / snl;   // X component (outward)
+    const float sny = (hr-ht) / snl;   // Y component (small positive — taper)
+
+    // ─── canvas sail panel (linen / pale cream) ──────────────────────────────
+    SetMaterial(0.86f, 0.82f, 0.68f, 6.0f);
     glBegin(GL_QUADS);
+        // front face (+Z)
         glNormal3f(0, 0, 1);
         glVertex3f(-hr, 0,   hd); glVertex3f( hr, 0,   hd);
         glVertex3f( ht, len, hd); glVertex3f(-ht, len, hd);
+        // back face (-Z)
         glNormal3f(0, 0, -1);
         glVertex3f( hr, 0,  -hd); glVertex3f(-hr, 0,  -hd);
         glVertex3f(-ht, len,-hd); glVertex3f( ht, len,-hd);
-        glNormal3f( sideN / sideNl, sideNy / sideNl, 0);
+        // right edge
+        glNormal3f( snx, sny, 0);
         glVertex3f( hr, 0,   hd); glVertex3f( hr, 0,  -hd);
         glVertex3f( ht, len,-hd); glVertex3f( ht, len, hd);
-        glNormal3f(-sideN / sideNl, sideNy / sideNl, 0);
+        // left edge
+        glNormal3f(-snx, sny, 0);
         glVertex3f(-hr, 0,  -hd); glVertex3f(-hr, 0,   hd);
         glVertex3f(-ht, len, hd); glVertex3f(-ht, len,-hd);
+        // tip cap
         glNormal3f(0, 1, 0);
         glVertex3f(-ht, len,-hd); glVertex3f(-ht, len, hd);
         glVertex3f( ht, len, hd); glVertex3f( ht, len,-hd);
+        // root cap
         glNormal3f(0, -1, 0);
         glVertex3f( hr, 0,   hd); glVertex3f(-hr, 0,   hd);
         glVertex3f(-hr, 0,  -hd); glVertex3f( hr, 0,  -hd);
     glEnd();
 
-    // central spine spar on front face
-    SetMaterial(0.52f, 0.38f, 0.18f, 16.0f);
+    // ─── wooden lattice frame on front face ───────────────────────────────────
+    SetMaterial(0.50f, 0.35f, 0.16f, 16.0f);
+    const float sparW = 0.07f;  // spar half-thickness
+    const float sparZ = hd + 0.04f;
+
+    // leading-edge spar (right side)
     glPushMatrix();
-        glTranslatef(0, len * 0.5f, hd + 0.04f);
-        DrawBox(0.06f, len, 0.08f);
+        glTranslatef( (hr + ht) * 0.5f - sparW, len * 0.5f, sparZ);
+        DrawBox(sparW * 2.0f, len, 0.07f);
+    glPopMatrix();
+    // trailing-edge spar (left side)
+    glPushMatrix();
+        glTranslatef(-(hr + ht) * 0.5f + sparW, len * 0.5f, sparZ);
+        DrawBox(sparW * 2.0f, len, 0.07f);
     glPopMatrix();
 
-    // cross-braces at 1/3 and 2/3 span
-    for (int ci = 1; ci <= 2; ci++) {
-        float frac = ci / 3.0f;
-        float hw   = hr + (ht - hr) * frac;
+    // cross members at 1/4, 1/2, 3/4 span
+    for (int ci = 1; ci <= 3; ci++) {
+        float frac = (float)ci / 4.0f;
+        float hw   = hr + (ht - hr) * frac;  // half-width at this height
         glPushMatrix();
-            glTranslatef(0, len * frac, hd + 0.04f);
-            DrawBox(hw * 2.0f * 0.88f, 0.04f, 0.08f);
+            glTranslatef(0, len * frac, sparZ);
+            DrawBox(hw * 1.85f, 0.055f, 0.07f);
         glPopMatrix();
     }
 }
@@ -815,7 +835,7 @@ void DrawWindmill() {
             glRotatef(windmillAngle + i * 90.0f, 0, 0, 1);
             glTranslatef(0, hubR + 0.02f, 0);
             SetMaterial(0.82f, 0.74f, 0.52f, 16.0f);
-            DrawBlade(2.2f, 0.30f, 0.07f);
+            DrawBlade(2.4f, 0.75f, 0.06f);  // wide sail: 0.75 root, 0.41 tip
         glPopMatrix();
     }
 
