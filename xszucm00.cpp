@@ -103,14 +103,19 @@ void OnInit() {
     glEnable(GL_LIGHT0);
 
     // GL_LIGHT1 — torch spotlight (warm, starts off)
+    // Cutoff 30° + gentle quadratic attenuation so the pool of light is visible
+    // on the ground when looking forward (pitch≈0). Exponent kept soft (4).
     GLfloat amb1[]  = {0.0f, 0.0f, 0.0f, 1.0f};
     GLfloat diff1[] = {1.0f, 0.9f, 0.7f, 1.0f};
-    GLfloat spec1[] = {0.5f, 0.5f, 0.4f, 1.0f};
+    GLfloat spec1[] = {0.6f, 0.6f, 0.5f, 1.0f};
     glLightfv(GL_LIGHT1, GL_AMBIENT,  amb1);
     glLightfv(GL_LIGHT1, GL_DIFFUSE,  diff1);
     glLightfv(GL_LIGHT1, GL_SPECULAR, spec1);
-    glLightf (GL_LIGHT1, GL_SPOT_CUTOFF,   15.0f);
-    glLightf (GL_LIGHT1, GL_SPOT_EXPONENT, 8.0f);
+    glLightf (GL_LIGHT1, GL_SPOT_CUTOFF,            30.0f);
+    glLightf (GL_LIGHT1, GL_SPOT_EXPONENT,            4.0f);
+    glLightf (GL_LIGHT1, GL_CONSTANT_ATTENUATION,    1.0f);
+    glLightf (GL_LIGHT1, GL_LINEAR_ATTENUATION,      0.04f);
+    glLightf (GL_LIGHT1, GL_QUADRATIC_ATTENUATION,   0.008f);
     glDisable(GL_LIGHT1);
 
     glEnable(GL_LIGHTING);
@@ -425,10 +430,16 @@ void OnDisplay() {
     if (torchOn) {
         glEnable(GL_LIGHT1);
         GLfloat lpos[] = {camX, camFloorY + bobOffset, camZ, 1.0f};
+        // Tilt the beam 15° below the camera look direction so it always
+        // illuminates the ground in front even when looking straight ahead.
+        // Without this bias, pitch≈0 → direction horizontal → 90° from ground
+        // normal → zero diffuse contribution on the terrain.
+        const float kDownTilt = 0.26f;  // ~15 degrees in radians
+        float dp = pitch - kDownTilt;
         GLfloat ldir[] = {
-            -sinf(yaw) * cosf(pitch),
-             sinf(pitch),
-            -cosf(yaw) * cosf(pitch)
+            -sinf(yaw) * cosf(dp),
+             sinf(dp),
+            -cosf(yaw) * cosf(dp)
         };
         glLightfv(GL_LIGHT1, GL_POSITION,       lpos);
         glLightfv(GL_LIGHT1, GL_SPOT_DIRECTION, ldir);
