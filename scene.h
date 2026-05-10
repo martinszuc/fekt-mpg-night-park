@@ -1599,15 +1599,19 @@ void DrawScene() {
         DrawFountain();
     glPopMatrix();
 
-    // ── benches — facing the fountain ────────────────────────────────────────
+    // ── benches — parallel to the Z-axis path arms, facing the fountain ─────
+    // Left bench: beside left path arm (arm x=[-3.5,-1.5]), rotated 90° so
+    // it runs along Z and the sitter faces +X toward the fountain.
     glPushMatrix();
-        glTranslatef(-4.0f, 0, 0.5f);
-        glRotatef( 30, 0, 1, 0);
+        glTranslatef(-4.5f, 0, -2.0f);
+        glRotatef(90, 0, 1, 0);
         DrawBench();
     glPopMatrix();
+    // Right bench: beside right path arm (arm x=[1.5,3.5]), rotated -90° so
+    // it runs along Z and the sitter faces -X toward the fountain.
     glPushMatrix();
-        glTranslatef( 4.0f, 0, -0.5f);
-        glRotatef(-30, 0, 1, 0);
+        glTranslatef( 4.5f, 0, -2.0f);
+        glRotatef(-90, 0, 1, 0);
         DrawBench();
     glPopMatrix();
 
