@@ -1239,10 +1239,16 @@ void DrawFountainWater() {
 // ─── bridge ──────────────────────────────────────────────────────────────────
 
 void DrawBridge() {
-    // Spans X-axis from x=-8.5 to x=-11.5 at z=-8, crossing lake inlet
-    const float bx  = -10.0f;   // centre X
-    const float bz  =  -8.0f;   // Z position
-    const float len =   3.0f;
+    // Spans the full lake width in X.
+    // Lake centre cx=-14, rx=6.5 → lake edges at x≈-20.5 and x≈-7.5.
+    // Bridge runs from x=-21 to x=-7 (len=14) so both ends land on shore.
+    const float bx  = -14.0f;  // centre X (lake centre)
+    const float bz  =  -8.0f;  // Z position (lake centre Z)
+    const float len =  14.0f;  // full span
+
+    const int   nPlanks    = 3;    // side-by-side deck planks
+    const int   nBalusters = 14;   // per side
+    const int   nPiers     = 3;    // intermediate pier pairs below deck
 
     // deck planks — raised 0.04 above terrain
     SetMaterial(0.55f, 0.40f, 0.22f, 8.0f);
@@ -1253,15 +1259,15 @@ void DrawBridge() {
         glPopMatrix();
     }
 
-    // side railings — top rail + 5 balusters each side
+    // side railings — continuous top rail + evenly-spaced balusters
     SetMaterial(0.42f, 0.30f, 0.14f, 16.0f);
     for (int side = -1; side <= 1; side += 2) {
         glPushMatrix();
             glTranslatef(bx, 0.76f, bz + side*0.50f);
             DrawBox(len, 0.06f, 0.06f);
         glPopMatrix();
-        for (int b = 0; b < 5; b++) {
-            float px = bx - len*0.5f + (b+0.5f)*(len/5.0f);
+        for (int b = 0; b < nBalusters; b++) {
+            float px = bx - len*0.5f + (b + 0.5f) * (len / nBalusters);
             glPushMatrix();
                 glTranslatef(px, 0.04f, bz + side*0.50f);
                 DrawBox(0.05f, 0.72f, 0.05f);
@@ -1269,13 +1275,25 @@ void DrawBridge() {
         }
     }
 
-    // under-deck support beams
+    // longitudinal under-deck stringers
     SetMaterial(0.35f, 0.25f, 0.12f, 4.0f);
     for (int side = -1; side <= 1; side += 2) {
         glPushMatrix();
             glTranslatef(bx, 0.04f, bz + side*0.34f);
-            DrawBox(len+0.20f, 0.12f, 0.10f);
+            DrawBox(len + 0.20f, 0.12f, 0.10f);
         glPopMatrix();
+    }
+
+    // intermediate piers — vertical posts dropping into the water at intervals
+    SetMaterial(0.32f, 0.22f, 0.10f, 4.0f);
+    for (int i = 0; i < nPiers; i++) {
+        float px = bx - len*0.5f + (i + 1) * (len / (nPiers + 1));
+        for (int side = -1; side <= 1; side += 2) {
+            glPushMatrix();
+                glTranslatef(px, 0.04f, bz + side*0.36f);
+                DrawBox(0.12f, 0.50f, 0.12f);   // post reaching down into water
+            glPopMatrix();
+        }
     }
 }
 
