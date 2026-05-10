@@ -1430,26 +1430,33 @@ void DrawNoticeBoard() {
     glPushMatrix(); glTranslatef(-0.40f, 1.44f, fz); DrawBox(0.04f, 0.56f, 0.04f); glPopMatrix();
     glPushMatrix(); glTranslatef( 0.40f, 1.44f, fz); DrawBox(0.04f, 0.56f, 0.04f); glPopMatrix();
 
-    // Text on the board face using glRasterPos3f — in board-local coords
-    // The board front face is at z = +0.07/2 + 0.07/2 = +0.075 from board centre,
-    // and the board centre is at y=1.15+0.28=1.43 (half height up from translate).
-    // We use local Z = 0.082 (just in front of board face).
+    // Text on the board face — glutStrokeCharacter renders as 3D line geometry
+    // so the text is fixed in world space and correctly foreshortens when viewed
+    // from the side (unlike glutBitmapCharacter which is always camera-facing).
+    // GLUT_STROKE_ROMAN character height = 119.05 units; scale maps that to world units.
+    // tz is just in front of the border frame strips (fz = 0.072).
     glDisable(GL_LIGHTING);
+    glLineWidth(1.5f);
     glColor3f(0.08f, 0.04f, 0.02f);  // dark ink
 
-    struct Line { float y; const char* text; void* font; };
-    Line lines[] = {
-        { 1.655f, "NIGHT  PARK",        GLUT_BITMAP_HELVETICA_18 },
-        { 1.555f, "Open sunrise to midnight", GLUT_BITMAP_HELVETICA_10 },
-        { 1.490f, "Stay on marked paths", GLUT_BITMAP_HELVETICA_10 },
-        { 1.425f, "Respect wildlife",    GLUT_BITMAP_HELVETICA_10 },
-        { 1.340f, "Enjoy your visit!",   GLUT_BITMAP_HELVETICA_12 },
+    const float tz = 0.092f;
+    struct SL { float x, y, s; const char* t; };
+    SL lines[] = {
+        { -0.25f, 1.625f, 0.00048f, "NIGHT  PARK"             },
+        { -0.36f, 1.535f, 0.00030f, "Open sunrise to midnight" },
+        { -0.36f, 1.475f, 0.00030f, "Stay on marked paths"    },
+        { -0.36f, 1.415f, 0.00030f, "Respect wildlife"        },
+        { -0.28f, 1.350f, 0.00033f, "Enjoy your visit!"       },
     };
     for (auto& l : lines) {
-        glRasterPos3f(-0.33f, l.y, 0.082f);
-        for (const char* c = l.text; *c; c++)
-            glutBitmapCharacter(l.font, *c);
+        glPushMatrix();
+            glTranslatef(l.x, l.y, tz);
+            glScalef(l.s, l.s, l.s);
+            for (const char* c = l.t; *c; c++)
+                glutStrokeCharacter(GLUT_STROKE_ROMAN, *c);
+        glPopMatrix();
     }
+    glLineWidth(1.0f);
     glEnable(GL_LIGHTING);
 }
 
