@@ -54,10 +54,52 @@ constexpr float kFogDensity      = 0.018f;
 constexpr int   kStarCount       = 200;
 constexpr float kStarRadius      = 80.0f;
 
-// ─── projectiles ─────────────────────────────────────────────────────────────
+// ─── projectiles + impact flashes ────────────────────────────────────────────
 
 struct Projectile { float x, y, z, vx, vy, vz, rot; bool active; };
 Projectile projectiles[10] = {};
+
+struct ImpactFlash { float x, y, z, life; bool active; };
+ImpactFlash impacts[10] = {};
+
+void SpawnImpact(float x, float y, float z) {
+    for (auto& f : impacts) {
+        if (f.active) continue;
+        f.x = x; f.y = y; f.z = z;
+        f.life = 1.0f;
+        f.active = true;
+        break;
+    }
+}
+
+// Drawn in transparent additive pass — bright ring that fades quickly
+void DrawImpacts() {
+    glDisable(GL_LIGHTING);
+    for (auto& f : impacts) {
+        if (!f.active) continue;
+        float alpha = f.life * 0.70f;
+        float r     = (1.0f - f.life) * 1.8f + 0.10f;  // grows as life decays
+        // outer flash ring
+        glColor4f(1.0f, 0.85f, 0.40f, alpha * 0.8f);
+        glBegin(GL_TRIANGLE_FAN);
+        glVertex3f(f.x, f.y + 0.02f, f.z);
+        for (int i = 0; i <= 16; i++) {
+            float a = (float)i / 16.0f * 2.0f * (float)M_PI;
+            glVertex3f(f.x + cosf(a)*r, f.y + 0.02f, f.z + sinf(a)*r);
+        }
+        glEnd();
+        // inner bright core
+        glColor4f(1.0f, 0.96f, 0.80f, alpha);
+        glBegin(GL_TRIANGLE_FAN);
+        glVertex3f(f.x, f.y + 0.02f, f.z);
+        for (int i = 0; i <= 12; i++) {
+            float a = (float)i / 12.0f * 2.0f * (float)M_PI;
+            glVertex3f(f.x + cosf(a)*r*0.35f, f.y + 0.02f, f.z + sinf(a)*r*0.35f);
+        }
+        glEnd();
+    }
+    glEnable(GL_LIGHTING);
+}
 
 void SpawnProjectile() {
     for (auto& p : projectiles) {
@@ -243,6 +285,12 @@ void DrawBox(float w, float h, float d) {
         glTexCoord2f(1, 0); glVertex3f( hw, h, -hd);
         glTexCoord2f(1, 1); glVertex3f( hw, h,  hd);
         glTexCoord2f(0, 1); glVertex3f(-hw, h,  hd);
+        // bottom (-Y)
+        glNormal3f(0, -1, 0);
+        glTexCoord2f(0, 1); glVertex3f(-hw, 0,  hd);
+        glTexCoord2f(1, 1); glVertex3f( hw, 0,  hd);
+        glTexCoord2f(1, 0); glVertex3f( hw, 0, -hd);
+        glTexCoord2f(0, 0); glVertex3f(-hw, 0, -hd);
     glEnd();
 }
 
@@ -1032,8 +1080,24 @@ void DrawFountain() {
     const int   bSegs = 16;
     const float bRi   = 0.80f, bRo = 1.30f, bH = 0.40f;
 
-    // outer basin wall
+    // Stone plaza disc under the fountain — covers terrain, marks the space
+    SetMaterial(0.48f, 0.46f, 0.42f, 20.0f);
+    {
+        GLfloat ps[] = {0.55f, 0.55f, 0.55f, 1.0f};
+        glMaterialfv(GL_FRONT, GL_SPECULAR, ps);
+    }
+    glBegin(GL_TRIANGLE_FAN);
+    glNormal3f(0, 1, 0);
+    glVertex3f(0, 0.01f, 0);
+    for (int i = 0; i <= 32; i++) {
+        float a = (float)i / 32.0f * 2.0f * (float)M_PI;
+        glVertex3f(cosf(a)*3.0f, 0.01f, sinf(a)*3.0f);
+    }
+    glEnd();
+
+    // outer basin wall — culling disabled so both inner/outer faces always render
     SetMaterial(0.68f, 0.62f, 0.52f, 12.0f);
+    glDisable(GL_CULL_FACE);
     glBegin(GL_QUADS);
     for (int i = 0; i < bSegs; i++) {
         float a0 = (float)i / bSegs * 2.0f * (float)M_PI;
@@ -1042,10 +1106,12 @@ void DrawFountain() {
         float x1 = cosf(a1)*bRo, z1 = sinf(a1)*bRo;
         float nx = (x0+x1)*0.5f, nz = (z0+z1)*0.5f, nl = sqrtf(nx*nx+nz*nz);
         glNormal3f(nx/nl, 0, nz/nl);
-        glVertex3f(x0,0,z0); glVertex3f(x1,0,z1);
-        glVertex3f(x1,bH,z1); glVertex3f(x0,bH,z0);
+        // CCW from outside: top-left → top-right → bottom-right → bottom-left
+        glVertex3f(x0,bH,z0); glVertex3f(x1,bH,z1);
+        glVertex3f(x1,0, z1); glVertex3f(x0,0, z0);
     }
     glEnd();
+    glEnable(GL_CULL_FACE);
 
     // rim (top ring)
     glBegin(GL_TRIANGLE_STRIP);
@@ -1337,13 +1403,35 @@ void DrawNoticeBoard() {
         glTranslatef(0, 1.50f, 0);
         DrawBox(0.96f, 0.05f, 0.16f);
     glPopMatrix();
-    // Dark border frame around panel face (4 thin strips at z offset)
+    // Dark border frame around panel face (4 thin strips)
     SetMaterial(0.22f, 0.16f, 0.08f, 16.0f);
     const float fz = 0.072f;
-    glPushMatrix(); glTranslatef(0,      1.72f, fz); DrawBox(0.80f, 0.04f, 0.04f); glPopMatrix(); // top
-    glPushMatrix(); glTranslatef(0,      1.18f, fz); DrawBox(0.80f, 0.04f, 0.04f); glPopMatrix(); // bottom
-    glPushMatrix(); glTranslatef(-0.40f, 1.44f, fz); DrawBox(0.04f, 0.56f, 0.04f); glPopMatrix(); // left
-    glPushMatrix(); glTranslatef( 0.40f, 1.44f, fz); DrawBox(0.04f, 0.56f, 0.04f); glPopMatrix(); // right
+    glPushMatrix(); glTranslatef(0,      1.72f, fz); DrawBox(0.80f, 0.04f, 0.04f); glPopMatrix();
+    glPushMatrix(); glTranslatef(0,      1.18f, fz); DrawBox(0.80f, 0.04f, 0.04f); glPopMatrix();
+    glPushMatrix(); glTranslatef(-0.40f, 1.44f, fz); DrawBox(0.04f, 0.56f, 0.04f); glPopMatrix();
+    glPushMatrix(); glTranslatef( 0.40f, 1.44f, fz); DrawBox(0.04f, 0.56f, 0.04f); glPopMatrix();
+
+    // Text on the board face using glRasterPos3f — in board-local coords
+    // The board front face is at z = +0.07/2 + 0.07/2 = +0.075 from board centre,
+    // and the board centre is at y=1.15+0.28=1.43 (half height up from translate).
+    // We use local Z = 0.082 (just in front of board face).
+    glDisable(GL_LIGHTING);
+    glColor3f(0.08f, 0.04f, 0.02f);  // dark ink
+
+    struct Line { float y; const char* text; void* font; };
+    Line lines[] = {
+        { 1.655f, "NIGHT  PARK",        GLUT_BITMAP_HELVETICA_18 },
+        { 1.555f, "Open sunrise to midnight", GLUT_BITMAP_HELVETICA_10 },
+        { 1.490f, "Stay on marked paths", GLUT_BITMAP_HELVETICA_10 },
+        { 1.425f, "Respect wildlife",    GLUT_BITMAP_HELVETICA_10 },
+        { 1.340f, "Enjoy your visit!",   GLUT_BITMAP_HELVETICA_12 },
+    };
+    for (auto& l : lines) {
+        glRasterPos3f(-0.33f, l.y, 0.082f);
+        for (const char* c = l.text; *c; c++)
+            glutBitmapCharacter(l.font, *c);
+    }
+    glEnable(GL_LIGHTING);
 }
 
 // ─── lake ────────────────────────────────────────────────────────────────────
@@ -1362,30 +1450,43 @@ static void DrawReed(float x, float z) {
     glPopMatrix();
 }
 
-// Opaque parts: shore gravel ring + animated water surface + shore reeds.
+// Opaque parts: mud bed + shore embankment + water surface + shore reeds.
+// wY is raised above terrain level (~0.19 at this map position) so water is visible.
 void DrawLake() {
     const float cx   = -14.0f, cz = -8.0f;
     const float rx   =   6.5f, rz =  5.0f;
     const int   segs = 32;
-    const float wY   = -0.08f;
+    const float bedY = 0.16f;  // mud bed — above terrain, below water
+    const float wY   = 0.22f;  // water surface — clearly visible above grass
 
-    // 1. Shore gravel ring
-    SetMaterial(0.26f, 0.24f, 0.21f, 6.0f);
+    // 0. Dark mud bed — covers the grass beneath the lake, gives the illusion of depth
+    SetMaterial(0.16f, 0.13f, 0.10f, 4.0f);
+    glBegin(GL_TRIANGLE_FAN);
+    glNormal3f(0, 1, 0);
+    glVertex3f(cx, bedY, cz);
+    for (int i = 0; i <= segs; i++) {
+        float a = (float)i / segs * 2.0f * (float)M_PI;
+        glVertex3f(cx + cosf(a)*(rx+0.40f), bedY, cz + sinf(a)*(rz+0.40f));
+    }
+    glEnd();
+
+    // 1. Shore embankment — sloped gravel strip from ground (y≈0) up to bed level
+    SetMaterial(0.30f, 0.27f, 0.23f, 6.0f);
     glBegin(GL_TRIANGLE_STRIP);
     glNormal3f(0, 1, 0);
     for (int i = 0; i <= segs; i++) {
         float a = (float)i / segs * 2.0f * (float)M_PI;
         float ca = cosf(a), sa = sinf(a);
-        glVertex3f(cx + ca*(rx+0.65f), 0.005f, cz + sa*(rz+0.65f));
-        glVertex3f(cx + ca* rx,        0.005f, cz + sa* rz);
+        glVertex3f(cx + ca*(rx+1.10f), 0.02f, cz + sa*(rz+1.10f));  // outer at ground
+        glVertex3f(cx + ca* rx,        bedY,  cz + sa* rz);          // inner at bed
     }
     glEnd();
 
-    // 2. Water surface — dark navy, high specular (looks reflective), gentle ripple
+    // 2. Water surface — dark navy, high specular, animated ripple
     {
-        GLfloat wAmb[]  = {0.01f, 0.04f, 0.10f, 1.0f};
-        GLfloat wDiff[] = {0.03f, 0.09f, 0.22f, 1.0f};
-        GLfloat wSpec[] = {0.75f, 0.82f, 0.96f, 1.0f};
+        GLfloat wAmb[]  = {0.01f, 0.04f, 0.12f, 1.0f};
+        GLfloat wDiff[] = {0.04f, 0.10f, 0.26f, 1.0f};
+        GLfloat wSpec[] = {0.80f, 0.86f, 0.98f, 1.0f};
         glMaterialfv(GL_FRONT, GL_AMBIENT,   wAmb);
         glMaterialfv(GL_FRONT, GL_DIFFUSE,   wDiff);
         glMaterialfv(GL_FRONT, GL_SPECULAR,  wSpec);
@@ -1398,7 +1499,6 @@ void DrawLake() {
             float a  = (float)i / segs * 2.0f * (float)M_PI;
             float vx = cx + cosf(a) * rx;
             float vz = cz + sinf(a) * rz;
-            // two overlapping sine waves — organic, not mechanical
             float vy = wY
                      + 0.020f * sinf(rippleTime * 1.3f + vx * 0.55f)
                      + 0.012f * sinf(rippleTime * 0.8f + vz * 0.72f);
@@ -1406,10 +1506,10 @@ void DrawLake() {
         }
     glEnd();
 
-    // 3. Shore reeds — 22 reeds, deterministic positions just outside water edge
+    // 3. Shore reeds — 22 reeds just outside water edge
     for (int i = 0; i < 22; i++) {
         float angle = (float)i / 22.0f * 2.0f * (float)M_PI + 0.42f;
-        float push  = 0.60f + 0.30f * sinf((float)i * 1.618f)
+        float push  = 0.65f + 0.30f * sinf((float)i * 1.618f)
                             + 0.18f * cosf((float)i * 2.399f);
         float sx = cx + cosf(angle) * (rx + push);
         float sz = cz + sinf(angle) * (rz + push * (rz / rx));
@@ -1424,21 +1524,22 @@ void DrawLakeMoonShimmer() {
     const float oz =  -8.0f - 1.8f;
     glDisable(GL_LIGHTING);
     // inner bright oval
+    const float shimY = 0.23f;  // just above water surface (wY=0.22)
     glColor4f(0.82f, 0.88f, 1.0f, 0.22f + 0.06f * sinf(rippleTime * 1.1f));
     glBegin(GL_TRIANGLE_FAN);
-        glVertex3f(ox, -0.04f, oz);
+        glVertex3f(ox, shimY, oz);
         for (int i = 0; i <= 24; i++) {
             float a = (float)i / 24.0f * 2.0f * (float)M_PI;
-            glVertex3f(ox + cosf(a)*1.2f, -0.04f, oz + sinf(a)*0.40f);
+            glVertex3f(ox + cosf(a)*1.2f, shimY, oz + sinf(a)*0.40f);
         }
     glEnd();
     // soft outer corona
     glColor4f(0.70f, 0.78f, 1.0f, 0.07f);
     glBegin(GL_TRIANGLE_FAN);
-        glVertex3f(ox, -0.04f, oz);
+        glVertex3f(ox, shimY, oz);
         for (int i = 0; i <= 24; i++) {
             float a = (float)i / 24.0f * 2.0f * (float)M_PI;
-            glVertex3f(ox + cosf(a)*2.2f, -0.04f, oz + sinf(a)*0.80f);
+            glVertex3f(ox + cosf(a)*2.2f, shimY, oz + sinf(a)*0.80f);
         }
     glEnd();
     glEnable(GL_LIGHTING);
@@ -1471,7 +1572,7 @@ void DrawScene() {
 
     // ── fountain (park centrepiece) ───────────────────────────────────────────
     glPushMatrix();
-        glTranslatef(0, 0, -2);
+        glTranslatef(0, 0.14f, -2);   // raised 0.14 so base clears terrain
         DrawFountain();
     glPopMatrix();
 

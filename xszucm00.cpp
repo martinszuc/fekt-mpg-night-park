@@ -233,8 +233,19 @@ void OnTimer(int) {
         p.x   += p.vx * dt;
         p.y   += p.vy * dt;
         p.z   += p.vz * dt;
-        p.rot += 200.0f * dt; // spin while in flight
+        p.rot += 200.0f * dt;
+        if (p.y <= 0.0f) {              // hit the ground — spawn flash
+            SpawnImpact(p.x, 0.0f, p.z);
+            p.active = false;
+        }
         if (p.y < -10.0f) p.active = false;
+    }
+
+    // age impact flashes
+    for (auto& f : impacts) {
+        if (!f.active) continue;
+        f.life -= dt * 2.2f;            // fades in ~0.45 s
+        if (f.life <= 0.0f) f.active = false;
     }
 
     // torch flicker — dual-sine so it feels organic
@@ -465,14 +476,17 @@ void OnDisplay() {
             DrawWindmillGlow(rx, ry, rz, ux, uy, uz);
         glPopMatrix();
 
-        // fountain water jet (additive glow)
+        // fountain water jet (additive glow) — matches fountain Y offset
         glPushMatrix();
-            glTranslatef(0, 0, -2);
+            glTranslatef(0, 0.14f, -2);
             DrawFountainWater();
         glPopMatrix();
 
         // lake moon shimmer (additive — soft reflection on water)
         DrawLakeMoonShimmer();
+
+        // projectile impact flashes
+        DrawImpacts();
     }
 
     glDepthMask(GL_TRUE);
