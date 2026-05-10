@@ -263,7 +263,7 @@ void OnInit() {
         starSizes[i] = (sr < 7) ? 0.0f : (sr < 9) ? 1.0f : 2.0f;
     }
 
-    // fireflies — fully deterministic: evenly-spaced phases, no rand()
+    // firefly positions and blink phases
     for (int i = 0; i < kFireflyCount; i++) {
         fireflies[i].x           = -15.0f + (i % 4) * 8.0f;
         fireflies[i].y           = 0.6f;
@@ -347,7 +347,7 @@ void OnTimer(int) {
         glLightfv(GL_LIGHT3, GL_DIFFUSE, ld);
     }
 
-    // deterministic firefly wander — sinusoidal, no rand(), CI-safe
+    // firefly position update
     {
         float tff = nowMs * 0.001f;
         for (int i = 0; i < kFireflyCount; i++) {
@@ -572,7 +572,7 @@ void OnDisplay() {
     // 1) windmill ground shadow + lantern windows: alpha blend
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glPushMatrix();
-        glTranslatef(-4, 0, -24);   // windmill moved to (-4, 0, -24)
+        glTranslatef(-4, 0, -24);
         DrawWindmillShadow();
     glPopMatrix();
     for (auto& l : kLanterns) {
@@ -596,7 +596,7 @@ void OnDisplay() {
             glPopMatrix();
         }
         glPushMatrix();
-            glTranslatef(-4, 0, -24);   // windmill moved to (-4, 0, -24)
+            glTranslatef(-4, 0, -24);
             DrawWindmillGlow(rx, ry, rz, ux, uy, uz);
         glPopMatrix();
 

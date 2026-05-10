@@ -465,9 +465,10 @@ void DrawShed() {
     SetMaterial(0.60f, 0.45f, 0.25f);
     DrawBox(4.0f, 2.5f, 3.0f);
 
-    // roof
+    // roof — culling disabled: single-layer surface must render both faces
     SetMaterial(0.45f, 0.20f, 0.10f);
     float bx = 2.3f, by = 2.5f, ridge = 3.5f, rz = 1.5f;
+    glDisable(GL_CULL_FACE);
     glBegin(GL_QUADS);
         triNormal(-bx, by, -rz,  -bx, by, rz,  0, ridge, rz);
         glVertex3f(-bx, by, -rz); glVertex3f(-bx, by,  rz);
@@ -482,6 +483,7 @@ void DrawShed() {
         triNormal( bx, by, -rz,  -bx, by, -rz,  0, ridge, -rz);
         glVertex3f( bx, by, -rz); glVertex3f(-bx, by, -rz); glVertex3f(0, ridge, -rz);
     glEnd();
+    glEnable(GL_CULL_FACE);
 
     // door on front face (z = 1.5), slightly offset from centre
     SetMaterial(0.35f, 0.18f, 0.08f);
@@ -540,7 +542,7 @@ void DrawBoulder() {
         // 13: flat base centre
         { 0.00f, 0.00f,  0.00f},
     };
-    // All faces reversed ({a,b,c} → {a,c,b}) so normals point outward (CCW from outside).
+    // all faces wound CCW from outside so normals point outward
     static const int f[][3] = {
         // top cap
         {0,2,1},{0,3,2},{0,4,3},{0,5,4},{0,6,5},{0,1,6},
@@ -565,7 +567,7 @@ void DrawBoulder() {
             glVertex3f(v[f[i][k]][0], v[f[i][k]][1], v[f[i][k]][2]);
     }
     glEnd();
-    // lighter lichen tone on top cap (faces 0-5) — drawn once, no coplanar overdraw
+    // lighter lichen tone on top cap (faces 0-5)
     SetMaterial(0.56f, 0.54f, 0.46f, 16.0f);
     glBegin(GL_TRIANGLES);
     for (int i = 0; i < 6; i++) {
@@ -611,9 +613,9 @@ void DrawFence(int count, float spacing) {
     glPopMatrix();
 }
 
-// Proper windmill sail: wide canvas panel on a wooden lattice frame.
+// Windmill sail: tapered canvas panel on a wooden lattice frame.
 // +Y = tip (away from hub), +Z = front face.
-// rootW should be ~0.75; tip is 55% of root for a gentle taper, NOT a spike.
+// rootW: ~0.75; tip tapers to 55% of root width.
 static void DrawBlade(float len, float rootW, float depth) {
     const float hr  = rootW * 0.5f;         // half-width at root
     const float ht  = rootW * 0.5f * 0.55f; // half-width at tip (55% — wide, not spiked)
@@ -1107,7 +1109,6 @@ void DrawFountain() {
         float x1 = cosf(a1)*bRo, z1 = sinf(a1)*bRo;
         float nx = (x0+x1)*0.5f, nz = (z0+z1)*0.5f, nl = sqrtf(nx*nx+nz*nz);
         glNormal3f(nx/nl, 0, nz/nl);
-        // CCW from outside: top-left → top-right → bottom-right → bottom-left
         glVertex3f(x0,bH,z0); glVertex3f(x1,bH,z1);
         glVertex3f(x1,0, z1); glVertex3f(x0,0, z0);
     }
@@ -1207,33 +1208,51 @@ void DrawFountain() {
 
 // Transparent-pass additive water jet column.  Call with additive blend active.
 void DrawFountainWater() {
+    // Vertical tapered cylinder — GL_TRIANGLE_STRIP rings at increasing heights,
+    // visible from any angle.
     glDisable(GL_LIGHTING);
-    // stacked horizontal discs — shrinking radius and alpha going up
-    for (int j = 0; j < 6; j++) {
-        float frac  = (float)j / 5.0f;
-        float y     = 0.96f + j * 0.15f;
-        float r     = 0.18f * (1.0f - frac*0.65f)
-                    + 0.03f * sinf(rippleTime*2.2f + (float)j);
-        float alpha = 0.32f * (1.0f - frac*0.88f);
-        glColor4f(0.62f, 0.82f, 1.0f, alpha);
-        glBegin(GL_TRIANGLE_FAN);
-        glVertex3f(0, y, 0);
-        for (int i = 0; i <= 12; i++) {
-            float a = (float)i / 12.0f * 2.0f * (float)M_PI;
-            glVertex3f(cosf(a)*r, y, sinf(a)*r);
+    glDisable(GL_CULL_FACE);
+
+    const int   segs   = 10;
+    const float baseY  = 0.96f;   // just above pedestal cap (pTop = 0.95)
+    const float topY   = 1.75f;   // jet apex
+    const int   rings  = 9;
+
+    for (int j = 0; j < rings - 1; j++) {
+        float t0 = (float)j       / (rings - 1);
+        float t1 = (float)(j + 1) / (rings - 1);
+        float y0 = baseY + t0 * (topY - baseY);
+        float y1 = baseY + t1 * (topY - baseY);
+        // radius tapers from 0.11 at base to ~0.01 at top, with animated wobble
+        float r0 = 0.11f * (1.0f - t0 * 0.90f) + 0.012f * sinf(rippleTime * 2.4f + t0 * 5.0f);
+        float r1 = 0.11f * (1.0f - t1 * 0.90f) + 0.012f * sinf(rippleTime * 2.4f + t1 * 5.0f);
+        float a0 = 0.55f * (1.0f - t0 * 0.88f);  // alpha fades toward apex
+        float a1 = 0.55f * (1.0f - t1 * 0.88f);
+
+        glBegin(GL_TRIANGLE_STRIP);
+        for (int i = 0; i <= segs; i++) {
+            float ang = (float)i / segs * 2.0f * (float)M_PI;
+            float ca  = cosf(ang), sa = sinf(ang);
+            glColor4f(0.70f, 0.88f, 1.0f, a1);
+            glVertex3f(ca * r1, y1, sa * r1);
+            glColor4f(0.70f, 0.88f, 1.0f, a0);
+            glVertex3f(ca * r0, y0, sa * r0);
         }
         glEnd();
     }
-    // base splash oval at water surface
-    glColor4f(0.50f, 0.76f, 1.0f, 0.14f);
+
+    // base splash ring at the water surface inside the basin
+    glColor4f(0.55f, 0.80f, 1.0f, 0.28f);
     glBegin(GL_TRIANGLE_FAN);
-    glVertex3f(0, 0.385f, 0);
+    glVertex3f(0, 0.40f, 0);
     for (int i = 0; i <= 16; i++) {
         float a = (float)i / 16.0f * 2.0f * (float)M_PI;
-        float r = 0.52f + 0.07f * sinf(rippleTime*1.9f + a*3.0f);
-        glVertex3f(cosf(a)*r, 0.385f, sinf(a)*r);
+        float r = 0.50f + 0.06f * sinf(rippleTime * 2.0f + a * 3.0f);
+        glVertex3f(cosf(a) * r, 0.40f, sinf(a) * r);
     }
     glEnd();
+
+    glEnable(GL_CULL_FACE);
     glEnable(GL_LIGHTING);
 }
 
@@ -1430,11 +1449,9 @@ void DrawNoticeBoard() {
     glPushMatrix(); glTranslatef(-0.40f, 1.44f, fz); DrawBox(0.04f, 0.56f, 0.04f); glPopMatrix();
     glPushMatrix(); glTranslatef( 0.40f, 1.44f, fz); DrawBox(0.04f, 0.56f, 0.04f); glPopMatrix();
 
-    // Text on the board face — glutStrokeCharacter renders as 3D line geometry
-    // so the text is fixed in world space and correctly foreshortens when viewed
-    // from the side (unlike glutBitmapCharacter which is always camera-facing).
-    // GLUT_STROKE_ROMAN character height = 119.05 units; scale maps that to world units.
-    // tz is just in front of the border frame strips (fz = 0.072).
+    // Text rendered with glutStrokeCharacter — 3D geometry fixed to the board surface.
+    // GLUT_STROKE_ROMAN character height = 119.05 units; scale converts to world units.
+    // tz places text just in front of the border frame strips (fz = 0.072).
     glDisable(GL_LIGHTING);
     glLineWidth(1.5f);
     glColor3f(0.08f, 0.04f, 0.02f);  // dark ink
@@ -1476,8 +1493,7 @@ static void DrawReed(float x, float z) {
     glPopMatrix();
 }
 
-// Opaque parts: mud bed + shore embankment + water surface + shore reeds.
-// wY is raised above terrain level (~0.19 at this map position) so water is visible.
+// Opaque parts: mud bed, shore embankment, water surface, and reeds.
 void DrawLake() {
     const float cx   = -14.0f, cz = -8.0f;
     const float rx   =   6.5f, rz =  5.0f;
@@ -1508,13 +1524,12 @@ void DrawLake() {
     }
     glEnd();
 
-    // 2. Water surface — emissive dark-blue so it reads as water in the night
-    // scene regardless of lighting angle.  GL_EMISSION simulates reflected sky.
+    // 2. Water surface — emissive night-blue
     {
-        GLfloat wAmb[]  = {0.04f, 0.10f, 0.24f, 1.0f};
-        GLfloat wDiff[] = {0.06f, 0.16f, 0.38f, 1.0f};
+        GLfloat wAmb[]  = {0.08f, 0.18f, 0.45f, 1.0f};
+        GLfloat wDiff[] = {0.12f, 0.28f, 0.65f, 1.0f};
         GLfloat wSpec[] = {0.90f, 0.94f, 1.00f, 1.0f};
-        GLfloat wEmit[] = {0.04f, 0.10f, 0.22f, 1.0f};  // reflected-sky glow
+        GLfloat wEmit[] = {0.10f, 0.22f, 0.52f, 1.0f};  // visible night-blue glow
         glMaterialfv(GL_FRONT, GL_AMBIENT,   wAmb);
         glMaterialfv(GL_FRONT, GL_DIFFUSE,   wDiff);
         glMaterialfv(GL_FRONT, GL_SPECULAR,  wSpec);
@@ -1693,9 +1708,7 @@ void DrawScene() {
 // ─── terrain ─────────────────────────────────────────────────────────────────
 
 void DrawTerrain() {
-    // corners rise to 2; all inner control points at 0 — centre y≈0.125
-    // Corners at 0.5 → centre height ≈ 0.031, well below all placed objects.
-    // (corners at 2.0 gave centre y≈0.125, burying slabs and obscuring water)
+    // corner control points at y=0.5, inner points at y=0 — centre height ≈ 0.031
     static float cp[4][4][3] = {
         {{-40,0.5f,-40},{-13,0.0f,-40},{ 13,0.0f,-40},{40,0.5f,-40}},
         {{-40,0.0f,-13},{-13,0.0f,-13},{ 13,0.0f,-13},{40,0.0f,-13}},
