@@ -279,18 +279,18 @@ void DrawBox(float w, float h, float d) {
         glTexCoord2f(1, 0); glVertex3f(-hw, 0,  hd);
         glTexCoord2f(1, 1); glVertex3f(-hw, h,  hd);
         glTexCoord2f(0, 1); glVertex3f(-hw, h, -hd);
-        // top (+Y)
+        // top (+Y) — CCW from above: far-left → near-left → near-right → far-right
         glNormal3f(0, 1, 0);
         glTexCoord2f(0, 0); glVertex3f(-hw, h, -hd);
-        glTexCoord2f(1, 0); glVertex3f( hw, h, -hd);
-        glTexCoord2f(1, 1); glVertex3f( hw, h,  hd);
         glTexCoord2f(0, 1); glVertex3f(-hw, h,  hd);
-        // bottom (-Y)
+        glTexCoord2f(1, 1); glVertex3f( hw, h,  hd);
+        glTexCoord2f(1, 0); glVertex3f( hw, h, -hd);
+        // bottom (-Y) — CCW from below: far-left → far-right → near-right → near-left
         glNormal3f(0, -1, 0);
-        glTexCoord2f(0, 1); glVertex3f(-hw, 0,  hd);
-        glTexCoord2f(1, 1); glVertex3f( hw, 0,  hd);
-        glTexCoord2f(1, 0); glVertex3f( hw, 0, -hd);
         glTexCoord2f(0, 0); glVertex3f(-hw, 0, -hd);
+        glTexCoord2f(1, 0); glVertex3f( hw, 0, -hd);
+        glTexCoord2f(1, 1); glVertex3f( hw, 0,  hd);
+        glTexCoord2f(0, 1); glVertex3f(-hw, 0,  hd);
     glEnd();
 }
 
@@ -540,18 +540,19 @@ void DrawBoulder() {
         // 13: flat base centre
         { 0.00f, 0.00f,  0.00f},
     };
+    // All faces reversed ({a,b,c} → {a,c,b}) so normals point outward (CCW from outside).
     static const int f[][3] = {
         // top cap
-        {0,1,2},{0,2,3},{0,3,4},{0,4,5},{0,5,6},{0,6,1},
+        {0,2,1},{0,3,2},{0,4,3},{0,5,4},{0,6,5},{0,1,6},
         // upper ring to lower ring (6 quads as 12 tris)
-        {1,7,2},{7,8,2},
-        {2,8,3},{8,9,3},
-        {3,9,4},{9,10,4},
-        {4,10,5},{10,11,5},
-        {5,11,6},{11,12,6},
-        {6,12,1},{12,7,1},
+        {1,2,7},{7,2,8},
+        {2,3,8},{8,3,9},
+        {3,4,9},{9,4,10},
+        {4,5,10},{10,5,11},
+        {5,6,11},{11,6,12},
+        {6,1,12},{12,1,7},
         // bottom cap
-        {13,8,7},{13,9,8},{13,10,9},{13,11,10},{13,12,11},{13,7,12},
+        {13,7,8},{13,8,9},{13,9,10},{13,10,11},{13,11,12},{13,12,7},
     };
     // base material: middle band (6-17) + bottom cap (18-23)
     SetMaterial(0.46f, 0.42f, 0.36f, 8.0f);
