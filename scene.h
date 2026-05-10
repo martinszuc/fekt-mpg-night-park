@@ -1482,15 +1482,18 @@ void DrawLake() {
     }
     glEnd();
 
-    // 2. Water surface — dark navy, high specular, animated ripple
+    // 2. Water surface — emissive dark-blue so it reads as water in the night
+    // scene regardless of lighting angle.  GL_EMISSION simulates reflected sky.
     {
-        GLfloat wAmb[]  = {0.01f, 0.04f, 0.12f, 1.0f};
-        GLfloat wDiff[] = {0.04f, 0.10f, 0.26f, 1.0f};
-        GLfloat wSpec[] = {0.80f, 0.86f, 0.98f, 1.0f};
+        GLfloat wAmb[]  = {0.04f, 0.10f, 0.24f, 1.0f};
+        GLfloat wDiff[] = {0.06f, 0.16f, 0.38f, 1.0f};
+        GLfloat wSpec[] = {0.90f, 0.94f, 1.00f, 1.0f};
+        GLfloat wEmit[] = {0.04f, 0.10f, 0.22f, 1.0f};  // reflected-sky glow
         glMaterialfv(GL_FRONT, GL_AMBIENT,   wAmb);
         glMaterialfv(GL_FRONT, GL_DIFFUSE,   wDiff);
         glMaterialfv(GL_FRONT, GL_SPECULAR,  wSpec);
-        glMaterialf (GL_FRONT, GL_SHININESS, 96.0f);
+        glMaterialfv(GL_FRONT, GL_EMISSION,  wEmit);
+        glMaterialf (GL_FRONT, GL_SHININESS, 128.0f);
     }
     glBegin(GL_TRIANGLE_FAN);
         glNormal3f(0, 1, 0);
@@ -1505,6 +1508,8 @@ void DrawLake() {
             glVertex3f(vx, vy, vz);
         }
     glEnd();
+    // Reset emission so subsequent objects are not affected
+    { GLfloat zero[] = {0,0,0,1}; glMaterialfv(GL_FRONT, GL_EMISSION, zero); }
 
     // 3. Shore reeds — 22 reeds just outside water edge
     for (int i = 0; i < 22; i++) {
