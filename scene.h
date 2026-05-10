@@ -1067,7 +1067,7 @@ void DrawStonePath() {
         else             SetMaterial(0.46f, 0.44f, 0.40f, 32.0f);
         glMaterialfv(GL_FRONT, GL_SPECULAR, slabSpec);
         glPushMatrix();
-            glTranslatef(s.x, 0.0f, s.z);
+            glTranslatef(s.x, 0.03f, s.z);
             glRotatef(s.yaw, 0, 1, 0);
             DrawBox(s.w, 0.06f, s.d);
         glPopMatrix();
@@ -1244,11 +1244,11 @@ void DrawBridge() {
     const float bz  =  -8.0f;   // Z position
     const float len =   3.0f;
 
-    // deck planks
+    // deck planks — raised 0.04 above terrain
     SetMaterial(0.55f, 0.40f, 0.22f, 8.0f);
     for (int p = -1; p <= 1; p++) {
         glPushMatrix();
-            glTranslatef(bx, 0.0f, bz + p*0.29f);
+            glTranslatef(bx, 0.04f, bz + p*0.29f);
             DrawBox(len, 0.07f, 0.27f);
         glPopMatrix();
     }
@@ -1257,13 +1257,13 @@ void DrawBridge() {
     SetMaterial(0.42f, 0.30f, 0.14f, 16.0f);
     for (int side = -1; side <= 1; side += 2) {
         glPushMatrix();
-            glTranslatef(bx, 0.72f, bz + side*0.50f);
+            glTranslatef(bx, 0.76f, bz + side*0.50f);
             DrawBox(len, 0.06f, 0.06f);
         glPopMatrix();
         for (int b = 0; b < 5; b++) {
             float px = bx - len*0.5f + (b+0.5f)*(len/5.0f);
             glPushMatrix();
-                glTranslatef(px, 0.0f, bz + side*0.50f);
+                glTranslatef(px, 0.04f, bz + side*0.50f);
                 DrawBox(0.05f, 0.72f, 0.05f);
             glPopMatrix();
         }
@@ -1273,7 +1273,7 @@ void DrawBridge() {
     SetMaterial(0.35f, 0.25f, 0.12f, 4.0f);
     for (int side = -1; side <= 1; side += 2) {
         glPushMatrix();
-            glTranslatef(bx, 0.0f, bz + side*0.34f);
+            glTranslatef(bx, 0.04f, bz + side*0.34f);
             DrawBox(len+0.20f, 0.12f, 0.10f);
         glPopMatrix();
     }
@@ -1347,7 +1347,7 @@ static void DrawGrassTuft(float x, float z) {
 static void DrawDuck(float x, float z, float baseYaw) {
     float yaw = baseYaw + rippleTime * 0.15f;
     glPushMatrix();
-    glTranslatef(x, -0.04f, z);
+    glTranslatef(x, 0.18f, z);   // sit at water surface level (wY=0.22, slightly submerged)
     glRotatef(yaw * (180.0f / (float)M_PI), 0, 1, 0);
 
     // body (squashed)
@@ -1659,11 +1659,13 @@ void DrawScene() {
 
 void DrawTerrain() {
     // corners rise to 2; all inner control points at 0 — centre y≈0.125
+    // Corners at 0.5 → centre height ≈ 0.031, well below all placed objects.
+    // (corners at 2.0 gave centre y≈0.125, burying slabs and obscuring water)
     static float cp[4][4][3] = {
-        {{-40,2.0f,-40},{-13,0.0f,-40},{ 13,0.0f,-40},{40,2.0f,-40}},
+        {{-40,0.5f,-40},{-13,0.0f,-40},{ 13,0.0f,-40},{40,0.5f,-40}},
         {{-40,0.0f,-13},{-13,0.0f,-13},{ 13,0.0f,-13},{40,0.0f,-13}},
         {{-40,0.0f, 13},{-13,0.0f, 13},{ 13,0.0f, 13},{40,0.0f, 13}},
-        {{-40,2.0f, 40},{-13,0.0f, 40},{ 13,0.0f, 40},{40,2.0f, 40}},
+        {{-40,0.5f, 40},{-13,0.0f, 40},{ 13,0.0f, 40},{40,0.5f, 40}},
     };
     static float tcp[4][4][2] = {
         {{0,0},{1.67f,0},{3.33f,0},{5,0}},
@@ -1709,10 +1711,10 @@ void DrawPath() {
 
     glNormal3f(0, 1, 0);
     glBegin(GL_QUADS);
-        glTexCoord2f(0, 0);  glVertex3f(-1.0f, 0.02f,  25.0f);
-        glTexCoord2f(1, 0);  glVertex3f( 1.0f, 0.02f,  25.0f);
-        glTexCoord2f(1, 24); glVertex3f( 1.0f, 0.02f, -22.0f);
-        glTexCoord2f(0, 24); glVertex3f(-1.0f, 0.02f, -22.0f);
+        glTexCoord2f(0, 0);  glVertex3f(-1.0f, 0.05f,  25.0f);
+        glTexCoord2f(1, 0);  glVertex3f( 1.0f, 0.05f,  25.0f);
+        glTexCoord2f(1, 24); glVertex3f( 1.0f, 0.05f, -22.0f);
+        glTexCoord2f(0, 24); glVertex3f(-1.0f, 0.05f, -22.0f);
     glEnd();
     if (texOn) glDisable(GL_TEXTURE_2D);
 }
