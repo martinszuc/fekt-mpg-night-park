@@ -1,7 +1,7 @@
 # MPC-MPG Project — Night Park
 
 <!-- SCREENSHOTS_START -->
-### Latest — v0.2.2
+### Latest — v0.2.3
 
 ![scene0](screenshots/latest/scene_0.webp)
 
@@ -14,6 +14,7 @@
 <!-- HISTORY_START -->
 | Version | Scene 0 | Scene 1 | Scene 2 |
 |---------|---------|---------|---------|
+| [v0.2.3](screenshots/v0.2.3/) | <img src="screenshots/v0.2.3/scene_0.webp" width="200"> | <img src="screenshots/v0.2.3/scene_1.webp" width="200"> | <img src="screenshots/v0.2.3/scene_2.webp" width="200"> |
 | [v0.2.2](screenshots/v0.2.2/) | <img src="screenshots/v0.2.2/scene_0.webp" width="200"> | <img src="screenshots/v0.2.2/scene_1.webp" width="200"> | <img src="screenshots/v0.2.2/scene_2.webp" width="200"> |
 | [v0.2.1](screenshots/v0.2.1/) | <img src="screenshots/v0.2.1/scene_0.webp" width="200"> | <img src="screenshots/v0.2.1/scene_1.webp" width="200"> | <img src="screenshots/v0.2.1/scene_2.webp" width="200"> |
 | [v0.2.0](screenshots/v0.2.0/) | <img src="screenshots/v0.2.0/scene_0.webp" width="200"> | <img src="screenshots/v0.2.0/scene_1.webp" width="200"> | <img src="screenshots/v0.2.0/scene_2.webp" width="200"> |
