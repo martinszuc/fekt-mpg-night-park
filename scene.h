@@ -1731,14 +1731,61 @@ void DrawPath() {
     SetMaterial(0.50f, 0.45f, 0.35f, 128.0f);
     GLfloat pathSpec[] = {0.6f, 0.6f, 0.6f, 1.0f};
     glMaterialfv(GL_FRONT, GL_SPECULAR, pathSpec);
-
     glNormal3f(0, 1, 0);
+
+    // Tex scale: 0.5 tex-units per world unit → checker ≈ 2×2 m.
+    // Fountain world pos (0, -, -2), plaza radius 3 → occupies z=[1,-5], x=[±3].
+    // Path detours around basin: arms at x=[±1.5, ±3.5] clear the outer wall (r=1.3).
+    const float pY = 0.05f;
+
+    // 1. Main approach: x=[-1,1], z=25 → z=1
     glBegin(GL_QUADS);
-        glTexCoord2f(0, 0);  glVertex3f(-1.0f, 0.05f,  25.0f);
-        glTexCoord2f(1, 0);  glVertex3f( 1.0f, 0.05f,  25.0f);
-        glTexCoord2f(1, 24); glVertex3f( 1.0f, 0.05f, -22.0f);
-        glTexCoord2f(0, 24); glVertex3f(-1.0f, 0.05f, -22.0f);
+        glTexCoord2f(0,  0); glVertex3f(-1.0f, pY,  25.0f);
+        glTexCoord2f(1,  0); glVertex3f( 1.0f, pY,  25.0f);
+        glTexCoord2f(1, 12); glVertex3f( 1.0f, pY,   1.0f);
+        glTexCoord2f(0, 12); glVertex3f(-1.0f, pY,   1.0f);
     glEnd();
+
+    // 2. Fork crossbar: x=[-3.5,3.5], z=1 → z=0.5  (joins approach to both arms)
+    glBegin(GL_QUADS);
+        glTexCoord2f(0,    0);    glVertex3f(-3.5f, pY,  1.0f);
+        glTexCoord2f(3.5f, 0);    glVertex3f( 3.5f, pY,  1.0f);
+        glTexCoord2f(3.5f, 0.25f);glVertex3f( 3.5f, pY,  0.5f);
+        glTexCoord2f(0,    0.25f);glVertex3f(-3.5f, pY,  0.5f);
+    glEnd();
+
+    // 3. Left arm: x=[-3.5,-1.5], z=0.5 → z=-5  (bypasses fountain on the left)
+    glBegin(GL_QUADS);
+        glTexCoord2f(0, 0);    glVertex3f(-3.5f, pY,  0.5f);
+        glTexCoord2f(1, 0);    glVertex3f(-1.5f, pY,  0.5f);
+        glTexCoord2f(1, 2.75); glVertex3f(-1.5f, pY, -5.0f);
+        glTexCoord2f(0, 2.75); glVertex3f(-3.5f, pY, -5.0f);
+    glEnd();
+
+    // 4. Right arm: x=[1.5,3.5], z=0.5 → z=-5  (bypasses fountain on the right)
+    glBegin(GL_QUADS);
+        glTexCoord2f(0, 0);    glVertex3f( 1.5f, pY,  0.5f);
+        glTexCoord2f(1, 0);    glVertex3f( 3.5f, pY,  0.5f);
+        glTexCoord2f(1, 2.75); glVertex3f( 3.5f, pY, -5.0f);
+        glTexCoord2f(0, 2.75); glVertex3f( 1.5f, pY, -5.0f);
+    glEnd();
+
+    // 5. Merge crossbar: x=[-3.5,3.5], z=-5 → z=-5.5  (rejoins arms to main path)
+    glBegin(GL_QUADS);
+        glTexCoord2f(0,    0);    glVertex3f(-3.5f, pY, -5.0f);
+        glTexCoord2f(3.5f, 0);    glVertex3f( 3.5f, pY, -5.0f);
+        glTexCoord2f(3.5f, 0.25f);glVertex3f( 3.5f, pY, -5.5f);
+        glTexCoord2f(0,    0.25f);glVertex3f(-3.5f, pY, -5.5f);
+    glEnd();
+
+    // 6. Continue straight: x=[-1,1], z=-5.5 → z=-22
+    glBegin(GL_QUADS);
+        glTexCoord2f(0,    0);    glVertex3f(-1.0f, pY, -5.5f);
+        glTexCoord2f(1,    0);    glVertex3f( 1.0f, pY, -5.5f);
+        glTexCoord2f(1, 8.25);    glVertex3f( 1.0f, pY, -22.0f);
+        glTexCoord2f(0, 8.25);    glVertex3f(-1.0f, pY, -22.0f);
+    glEnd();
+
     if (texOn) glDisable(GL_TEXTURE_2D);
 }
 
