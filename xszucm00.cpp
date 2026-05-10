@@ -36,6 +36,35 @@
  */
 
 #include "scene.h"
+#include <cstdarg>
+#ifdef _WIN32
+#  include <direct.h>
+#  define getcwd _getcwd
+#else
+#  include <unistd.h>
+#endif
+
+// ─── logging ─────────────────────────────────────────────────────────────────
+
+// Log(category, fmt, ...) — prints "[CATEGORY] message\n" to stdout, flushed.
+static void Log(const char* cat, const char* fmt, ...) {
+    printf("[%-5s] ", cat);
+    va_list ap;
+    va_start(ap, fmt);
+    vprintf(fmt, ap);
+    va_end(ap);
+    printf("\n");
+    fflush(stdout);
+}
+
+// CheckGL(where) — prints any pending GL error, or "OK" if none.
+static void CheckGL(const char* where) {
+    GLenum e = glGetError();
+    if (e != GL_NO_ERROR)
+        Log("GL", "ERROR after %s: 0x%04X", where, e);
+    else
+        Log("GL", "%s: OK", where);
+}
 
 // ─── CI screenshot mode ───────────────────────────────────────────────────────
 
@@ -83,6 +112,15 @@ void OnReshape(int w, int h) {
 }
 
 void OnInit() {
+    // ── startup diagnostics ──────────────────────────────────────────────────
+    char cwd[512] = "(unknown)";
+    getcwd(cwd, sizeof(cwd));
+    Log("INIT", "=== Night Park — OnInit ===");
+    Log("INIT", "working directory : %s", cwd);
+    Log("INIT", "GL vendor         : %s", glGetString(GL_VENDOR));
+    Log("INIT", "GL renderer       : %s", glGetString(GL_RENDERER));
+    Log("INIT", "GL version        : %s", glGetString(GL_VERSION));
+
     glFrontFace(GL_CCW);
     glCullFace(GL_BACK);
     glEnable(GL_CULL_FACE);
@@ -101,6 +139,7 @@ void OnInit() {
     glLightfv(GL_LIGHT0, GL_DIFFUSE,  diff0);
     glLightfv(GL_LIGHT0, GL_SPECULAR, spec0);
     glEnable(GL_LIGHT0);
+    Log("INIT", "GL_LIGHT0 (moon) enabled — directional blue-white");
 
     // GL_LIGHT1 — torch spotlight (warm, starts off)
     // Cutoff 30° + gentle quadratic attenuation so the pool of light is visible
@@ -117,6 +156,7 @@ void OnInit() {
     glLightf (GL_LIGHT1, GL_LINEAR_ATTENUATION,      0.04f);
     glLightf (GL_LIGHT1, GL_QUADRATIC_ATTENUATION,   0.008f);
     glDisable(GL_LIGHT1);
+    Log("INIT", "GL_LIGHT1 (torch) configured — cutoff=30 exp=4, starts OFF");
 
     glEnable(GL_LIGHTING);
     glEnable(GL_DEPTH_TEST);
@@ -135,6 +175,7 @@ void OnInit() {
         glLightf (li, GL_QUADRATIC_ATTENUATION, 0.04f);
         glEnable(li);
     }
+    Log("INIT", "GL_LIGHT2/3 (lanterns) enabled — warm yellow, attenuation on");
 
     // GL_LIGHT4 — fountain basin (blue-white point, quadratic attenuation)
     GLfloat fAmb[]  = {0.00f, 0.00f, 0.00f, 1.0f};
@@ -147,6 +188,7 @@ void OnInit() {
     glLightf (GL_LIGHT4, GL_LINEAR_ATTENUATION,    0.20f);
     glLightf (GL_LIGHT4, GL_QUADRATIC_ATTENUATION, 0.10f);
     glEnable (GL_LIGHT4);
+    Log("INIT", "GL_LIGHT4 (fountain) enabled — blue-white point light");
 
     // atmospheric fog — dark blue-black, fades objects beyond ~40 units
     GLfloat fogColor[] = {0.03f, 0.03f, 0.10f, 1.0f};
@@ -156,7 +198,8 @@ void OnInit() {
     glFogf (GL_FOG_DENSITY, kFogDensity);
     glHint (GL_FOG_HINT,    GL_NICEST);
 
-    // procedural checker texture (64×64)
+    // ── procedural checker texture (64×64) ──────────────────────────────────
+    Log("TEX", "generating procedural checker texture (64x64)...");
     unsigned char checker[64 * 64 * 3];
     for (int i = 0; i < 64; i++)
         for (int j = 0; j < 64; j++) {
@@ -169,8 +212,41 @@ void OnInit() {
     gluBuild2DMipmaps(GL_TEXTURE_2D, GL_RGB, 64, 64, GL_RGB, GL_UNSIGNED_BYTE, checker);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    Log("TEX", "checker texture ID=%u  glIsTexture=%s",
+        texChecker, glIsTexture(texChecker) ? "true" : "false");
+    CheckGL("checker texture");
 
-    setTexture("assets/textures/grass.bmp", &texGrass, true);
+    // ── grass BMP texture ────────────────────────────────────────────────────
+    {
+        const char* grassPath = "assets/textures/grass.bmp";
+        Log("TEX", "loading grass texture: %s", grassPath);
+
+        // Check the file is reachable before handing off to imageLoad
+        FILE* probe = fopen(grassPath, "rb");
+        if (probe) {
+            fclose(probe);
+            Log("TEX", "  file found OK");
+        } else {
+            Log("TEX", "  ERROR: file NOT found — check working directory!");
+            Log("TEX", "  expected full path: %s/%s", cwd, grassPath);
+        }
+
+        bool ok = setTexture(grassPath, &texGrass, true);
+        Log("TEX", "  setTexture() returned: %s", ok ? "SUCCESS" : "FAILED");
+        Log("TEX", "  texGrass ID=%u  glIsTexture=%s",
+            texGrass, glIsTexture(texGrass) ? "true" : "false");
+
+        // imageLoad.h does not set filter params — apply them explicitly
+        if (ok && texGrass) {
+            glBindTexture(GL_TEXTURE_2D, texGrass);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+            Log("TEX", "  filter params set (LINEAR_MIPMAP_LINEAR / REPEAT)");
+        }
+        CheckGL("grass texture");
+    }
 
     // star field — seeded once so CI screenshots are pixel-perfect
     srand(42);
@@ -196,6 +272,9 @@ void OnInit() {
         fireflies[i].speed       = 1.2f + (i % 3) * 0.4f;
         fireflies[i].wanderAngle = 0.0f;
     }
+
+    Log("INIT", "stars=%d  fireflies=%d", kStarCount, kFireflyCount);
+    Log("INIT", "=== OnInit complete ===");
 }
 
 void OnTimer(int) {
@@ -301,8 +380,8 @@ void OnSpecial(int key, int, int) {
     if (key == GLUT_KEY_DOWN)  keys[GLUT_KEY_DOWN  + 200] = true;
     if (key == GLUT_KEY_LEFT)  keys[GLUT_KEY_LEFT  + 200] = true;
     if (key == GLUT_KEY_RIGHT) keys[GLUT_KEY_RIGHT + 200] = true;
-    if (key == GLUT_KEY_PAGE_UP)   { camFloorY += 0.5f; if (camFloorY >  30.0f) camFloorY =  30.0f; lastAction = "camera up"; }
-    if (key == GLUT_KEY_PAGE_DOWN) { camFloorY -= 0.5f; if (camFloorY < -5.0f)  camFloorY = -5.0f;  lastAction = "camera down"; }
+    if (key == GLUT_KEY_PAGE_UP)   { camFloorY += 0.5f; if (camFloorY >  30.0f) camFloorY =  30.0f; lastAction = "camera up";   Log("KEY", "PageUp   -> camFloorY=%.2f", camFloorY); }
+    if (key == GLUT_KEY_PAGE_DOWN) { camFloorY -= 0.5f; if (camFloorY < -5.0f)  camFloorY = -5.0f;  lastAction = "camera down"; Log("KEY", "PageDown -> camFloorY=%.2f", camFloorY); }
     glutPostRedisplay();
 }
 
@@ -337,18 +416,34 @@ void OnPassiveMotion(int, int) {}
 
 void OnKeyboard(unsigned char key, int, int) {
     keys[key] = true;
-    if (key == 27) exit(0);
+    if (key == 27) { Log("KEY", "Esc -> exit"); exit(0); }
     if (key == 'r' || key == 'R') {
         torchOn = !torchOn;
         lastAction = torchOn ? "torch ON" : "torch OFF";
+        Log("KEY", "R -> torch %s", torchOn ? "ON" : "OFF");
     }
-    if (key == ' ') SpawnProjectile();
+    if (key == ' ') {
+        SpawnProjectile();
+        Log("KEY", "Space -> projectile thrown from (%.2f, %.2f, %.2f) yaw=%.1f deg",
+            camX, camFloorY + bobOffset, camZ,
+            yaw * (180.0f / (float)M_PI));
+    }
     if (key == 'p' || key == 'P') {
         printf("[CAM] x=%.2f  y=%.2f  z=%.2f  yaw=%.2f deg  pitch=%.2f deg\n",
                camX, camFloorY, camZ,
                yaw   * (180.0f / (float)M_PI),
                pitch * (180.0f / (float)M_PI));
         fflush(stdout);
+    }
+    // Log non-movement action keys (skip held W/A/S/D/arrows which spam)
+    if (key != 'w' && key != 'W' && key != 's' && key != 'S' &&
+        key != 'a' && key != 'A' && key != 'd' && key != 'D' &&
+        key != ' ' && key != 'r' && key != 'R' &&
+        key != 'p' && key != 'P' && key != 27) {
+        if (key >= 32 && key < 127)
+            Log("KEY", "key '%c' (0x%02X) pressed", key, (unsigned)key);
+        else
+            Log("KEY", "key 0x%02X pressed", (unsigned)key);
     }
 }
 
@@ -364,28 +459,46 @@ void OnMenu(int val) {
             camX = 0; camFloorY = 1.7f; camZ = 20.0f;
             yaw = 0; pitch = 0;
             lastAction = "camera reset";
+            Log("MENU", "Reset camera -> pos (0, 1.7, 20)");
             break;
-        case 2: animOn = !animOn; lastAction = animOn ? "animation ON" : "animation OFF"; break;
-        case 3: texOn  = !texOn;  lastAction = texOn  ? "textures ON"  : "textures OFF";  break;
+        case 2:
+            animOn = !animOn;
+            lastAction = animOn ? "animation ON" : "animation OFF";
+            Log("MENU", "Animation -> %s", animOn ? "ON" : "OFF");
+            break;
+        case 3:
+            texOn = !texOn;
+            lastAction = texOn ? "textures ON" : "textures OFF";
+            Log("MENU", "Textures -> %s  (texGrass=%u texChecker=%u)",
+                texOn ? "ON" : "OFF", texGrass, texChecker);
+            break;
         case 4:
-            if (glIsEnabled(GL_LIGHT0)) { glDisable(GL_LIGHT0); lastAction = "light OFF"; }
-            else                        { glEnable (GL_LIGHT0); lastAction = "light ON";  }
+            if (glIsEnabled(GL_LIGHT0)) { glDisable(GL_LIGHT0); lastAction = "light OFF"; Log("MENU", "Moon light -> OFF"); }
+            else                        { glEnable (GL_LIGHT0); lastAction = "light ON";  Log("MENU", "Moon light -> ON");  }
             break;
-        case 5: torchOn = !torchOn; lastAction = torchOn ? "torch ON" : "torch OFF"; break;
+        case 5:
+            torchOn = !torchOn;
+            lastAction = torchOn ? "torch ON" : "torch OFF";
+            Log("MENU", "Torch -> %s", torchOn ? "ON" : "OFF");
+            break;
         case 6: {
             bool on = glIsEnabled(GL_LIGHT2);
             on ? glDisable(GL_LIGHT2) : glEnable(GL_LIGHT2);
             on ? glDisable(GL_LIGHT3) : glEnable(GL_LIGHT3);
             lastAction = on ? "lanterns OFF" : "lanterns ON";
+            Log("MENU", "Lanterns -> %s", on ? "OFF" : "ON");
             break;
         }
         case 8: {
             bool on = glIsEnabled(GL_LIGHT4);
             on ? glDisable(GL_LIGHT4) : glEnable(GL_LIGHT4);
             lastAction = on ? "fountain light OFF" : "fountain light ON";
+            Log("MENU", "Fountain light -> %s", on ? "OFF" : "ON");
             break;
         }
-        case 7: exit(0);
+        case 7:
+            Log("MENU", "Exit selected -> quit");
+            exit(0);
     }
     glutPostRedisplay();
 }
