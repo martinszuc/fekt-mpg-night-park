@@ -1654,7 +1654,7 @@ void DrawScene() {
     // ── notice board near entrance ────────────────────────────────────────────
     glPushMatrix();
         glTranslatef(3.5f, 0, 16.0f);
-        glRotatef(170, 0, 1, 0);
+        glRotatef(-10, 0, 1, 0);  // text face (+Z) now points toward entrance (z≈20)
         DrawNoticeBoard();
     glPopMatrix();
 
