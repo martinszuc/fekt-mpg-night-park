@@ -615,7 +615,7 @@ void OnDisplay() {
     glEnable(GL_BLEND);
     glDepthMask(GL_FALSE);
 
-    // 1) windmill ground shadow + lantern windows: alpha blend
+    // 1) windmill ground shadow + lantern windows + shed glass: alpha blend
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glPushMatrix();
         glTranslatef(-4, 0, -24);
@@ -627,6 +627,11 @@ void OnDisplay() {
             DrawLanternWindow();
         glPopMatrix();
     }
+    // shed windows — 4 semi-transparent glass panes (2 side + 1 front + 1 back)
+    glPushMatrix();
+        glTranslatef(12, 0, -8);
+        DrawShedWindows();
+    glPopMatrix();
 
     // 2) additive: lantern glow halos + windmill window glow
     {
