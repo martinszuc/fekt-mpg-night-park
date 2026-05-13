@@ -176,21 +176,20 @@ void OnInit() {
     Log("INIT", "GL_LIGHT0 (moon) enabled — directional blue-white");
 
     // GL_LIGHT1 — torch spotlight (warm, starts off)
-    // Cutoff 30° + gentle quadratic attenuation so the pool of light is visible
-    // on the ground when looking forward (pitch≈0). Exponent kept soft (4).
+    // Wide 45° cutoff + low attenuation so the ground pool is obvious.
     GLfloat amb1[]  = {0.0f, 0.0f, 0.0f, 1.0f};
-    GLfloat diff1[] = {1.0f, 0.9f, 0.7f, 1.0f};
-    GLfloat spec1[] = {0.6f, 0.6f, 0.5f, 1.0f};
+    GLfloat diff1[] = {1.6f, 1.3f, 0.9f, 1.0f};
+    GLfloat spec1[] = {0.8f, 0.7f, 0.5f, 1.0f};
     glLightfv(GL_LIGHT1, GL_AMBIENT,  amb1);
     glLightfv(GL_LIGHT1, GL_DIFFUSE,  diff1);
     glLightfv(GL_LIGHT1, GL_SPECULAR, spec1);
-    glLightf (GL_LIGHT1, GL_SPOT_CUTOFF,            30.0f);
-    glLightf (GL_LIGHT1, GL_SPOT_EXPONENT,            4.0f);
-    glLightf (GL_LIGHT1, GL_CONSTANT_ATTENUATION,    1.0f);
-    glLightf (GL_LIGHT1, GL_LINEAR_ATTENUATION,      0.04f);
-    glLightf (GL_LIGHT1, GL_QUADRATIC_ATTENUATION,   0.008f);
+    glLightf (GL_LIGHT1, GL_SPOT_CUTOFF,            45.0f);
+    glLightf (GL_LIGHT1, GL_SPOT_EXPONENT,            2.0f);
+    glLightf (GL_LIGHT1, GL_CONSTANT_ATTENUATION,    0.4f);
+    glLightf (GL_LIGHT1, GL_LINEAR_ATTENUATION,      0.02f);
+    glLightf (GL_LIGHT1, GL_QUADRATIC_ATTENUATION,   0.003f);
     glDisable(GL_LIGHT1);
-    Log("INIT", "GL_LIGHT1 (torch) configured — cutoff=30 exp=4, starts OFF");
+    Log("INIT", "GL_LIGHT1 (torch) configured — cutoff=45 exp=2, starts OFF");
 
     glEnable(GL_LIGHTING);
     glEnable(GL_DEPTH_TEST);
@@ -211,18 +210,18 @@ void OnInit() {
     }
     Log("INIT", "GL_LIGHT2/3 (lanterns) enabled — warm yellow, attenuation on");
 
-    // GL_LIGHT4 — fountain basin (blue-white point, quadratic attenuation)
+    // GL_LIGHT4 — fountain basin (blue-white point, low attenuation so plaza glows)
     GLfloat fAmb[]  = {0.00f, 0.00f, 0.00f, 1.0f};
-    GLfloat fDif[]  = {0.28f, 0.52f, 0.80f, 1.0f};
-    GLfloat fSpc[]  = {0.35f, 0.60f, 0.90f, 1.0f};
+    GLfloat fDif[]  = {0.70f, 0.90f, 1.40f, 1.0f};
+    GLfloat fSpc[]  = {0.80f, 0.95f, 1.20f, 1.0f};
     glLightfv(GL_LIGHT4, GL_AMBIENT,               fAmb);
     glLightfv(GL_LIGHT4, GL_DIFFUSE,               fDif);
     glLightfv(GL_LIGHT4, GL_SPECULAR,              fSpc);
-    glLightf (GL_LIGHT4, GL_CONSTANT_ATTENUATION,  0.5f);
-    glLightf (GL_LIGHT4, GL_LINEAR_ATTENUATION,    0.20f);
-    glLightf (GL_LIGHT4, GL_QUADRATIC_ATTENUATION, 0.10f);
+    glLightf (GL_LIGHT4, GL_CONSTANT_ATTENUATION,  0.10f);
+    glLightf (GL_LIGHT4, GL_LINEAR_ATTENUATION,    0.06f);
+    glLightf (GL_LIGHT4, GL_QUADRATIC_ATTENUATION, 0.02f);
     glEnable (GL_LIGHT4);
-    Log("INIT", "GL_LIGHT4 (fountain) enabled — blue-white point light");
+    Log("INIT", "GL_LIGHT4 (fountain) enabled — bright blue-white, low attenuation");
 
     // atmospheric fog — dark blue-black, fades objects beyond ~40 units
     GLfloat fogColor[] = {0.03f, 0.03f, 0.10f, 1.0f};
@@ -382,7 +381,7 @@ void OnTimer(int) {
     // torch flicker — dual-sine so it feels organic
     if (torchOn) {
         float flicker = 0.85f + 0.15f * sinf(nowMs * 0.037f) * sinf(nowMs * 0.019f);
-        GLfloat fd[] = {1.0f * flicker, 0.9f * flicker, 0.7f * flicker, 1.0f};
+        GLfloat fd[] = {1.6f * flicker, 1.3f * flicker, 0.9f * flicker, 1.0f};
         glLightfv(GL_LIGHT1, GL_DIFFUSE, fd);
     }
 
@@ -581,9 +580,9 @@ void OnDisplay() {
         glLightfv(lanternLights[i], GL_POSITION, lp);
     }
 
-    // fountain basin light — inside the basin at water surface height
+    // fountain light — above basin rim so it casts outward onto the stone plaza
     {
-        GLfloat fp[] = {0.0f, 0.44f, -2.0f, 1.0f};
+        GLfloat fp[] = {0.0f, 1.80f, -2.0f, 1.0f};
         glLightfv(GL_LIGHT4, GL_POSITION, fp);
     }
 
