@@ -57,6 +57,9 @@
  * Platform / configuration:
  *   macOS 15, Apple M4 Pro, CLion 2025, OpenGL 2.1 + GLUT framework
  *   Also tested: Ubuntu 22.04 + Mesa (CI, headless via Xvfb)
+ *
+ * Repository (screenshots + full history):
+ *   https://github.com/martinszuc/fekt-mpg-night-park
  */
 
 #include "scene.h"

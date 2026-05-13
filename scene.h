@@ -1,3 +1,5 @@
+// scene.h — scene globals, structs, and Draw* functions for Night Park
+// Part of: https://github.com/martinszuc/fekt-mpg-night-park
 #pragma once
 
 #define _USE_MATH_DEFINES
