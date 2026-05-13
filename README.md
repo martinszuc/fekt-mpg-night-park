@@ -1,5 +1,8 @@
 # MPC-MPG Project — Night Park
 
+> **Note for reviewers:** This README contains screenshots and a full version history that are only rendered on GitHub.
+> View the full version at: **https://github.com/martinszuc/fekt-mpg-night-park**
+
 <!-- SCREENSHOTS_START -->
 ### Latest — v0.3.3
 
