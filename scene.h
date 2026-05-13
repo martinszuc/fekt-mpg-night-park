@@ -39,8 +39,12 @@ float windmillAngle = 0.0f;
 float rippleTime    = 0.0f;   // driven by OnTimer: rippleTime += dt
 
 bool         texOn      = true;
-unsigned int texGrass   = 0;
-unsigned int texChecker = 0;
+unsigned int texGrass     = 0;
+unsigned int texChecker   = 0;
+unsigned int texBark      = 0;
+unsigned int texRooftile  = 0;
+unsigned int texWoodplank = 0;
+unsigned int texWater     = 0;
 
 std::string lastAction = "start";
 
@@ -315,6 +319,7 @@ void DrawTree() {
     {
         const int  sides = 8;
         const float r = 0.22f, h = 2.5f;
+        if (texOn && texBark) { glEnable(GL_TEXTURE_2D); glBindTexture(GL_TEXTURE_2D, texBark); }
         glBegin(GL_QUADS);
         for (int i = 0; i < sides; i++) {
             float a0 = (float)i       / sides * 2.0f * (float)M_PI;
@@ -324,10 +329,14 @@ void DrawTree() {
             float nx = (x0 + x1) * 0.5f, nz = (z0 + z1) * 0.5f;
             float nl = sqrtf(nx * nx + nz * nz);
             glNormal3f(nx / nl, 0.0f, nz / nl);
-            glVertex3f(x0, 0, z0); glVertex3f(x1, 0, z1);
-            glVertex3f(x1, h, z1); glVertex3f(x0, h, z0);
+            float u0 = (float)i / sides, u1 = (float)(i + 1) / sides;
+            glTexCoord2f(u0, 0); glVertex3f(x0, 0, z0);
+            glTexCoord2f(u1, 0); glVertex3f(x1, 0, z1);
+            glTexCoord2f(u1, 1); glVertex3f(x1, h, z1);
+            glTexCoord2f(u0, 1); glVertex3f(x0, h, z0);
         }
         glEnd();
+        if (texOn && texBark) glDisable(GL_TEXTURE_2D);
     }
 
     // undergrowth disc at base — hides the trunk-ground seam
@@ -372,6 +381,7 @@ void DrawTree() {
 
 void DrawBench() {
     SetMaterial(0.55f, 0.30f, 0.10f);
+    if (texOn && texWoodplank) { glEnable(GL_TEXTURE_2D); glBindTexture(GL_TEXTURE_2D, texWoodplank); }
 
     const float seatW = 2.0f, seatD = 0.65f, seatH = 0.7f;
 
@@ -407,6 +417,7 @@ void DrawBench() {
             DrawBox(armW, 0.35f, seatD);
         glPopMatrix();
     }
+    if (texOn && texWoodplank) glDisable(GL_TEXTURE_2D);
 }
 
 struct LanternPos { float x, y, z; };
@@ -463,26 +474,52 @@ void DrawLanternGlow(float rx, float ry, float rz,
 void DrawShed() {
     // walls
     SetMaterial(0.60f, 0.45f, 0.25f);
+    if (texOn && texWoodplank) { glEnable(GL_TEXTURE_2D); glBindTexture(GL_TEXTURE_2D, texWoodplank); }
     DrawBox(4.0f, 2.5f, 3.0f);
+    if (texOn && texWoodplank) glDisable(GL_TEXTURE_2D);
 
     // roof — culling disabled: single-layer surface must render both faces
     SetMaterial(0.45f, 0.20f, 0.10f);
     float bx = 2.3f, by = 2.5f, ridge = 3.5f, rz = 1.5f;
+    if (texOn && texRooftile) { glEnable(GL_TEXTURE_2D); glBindTexture(GL_TEXTURE_2D, texRooftile); }
     glDisable(GL_CULL_FACE);
     glBegin(GL_QUADS);
         triNormal(-bx, by, -rz,  -bx, by, rz,  0, ridge, rz);
-        glVertex3f(-bx, by, -rz); glVertex3f(-bx, by,  rz);
-        glVertex3f(  0, ridge,  rz); glVertex3f(  0, ridge, -rz);
+        glTexCoord2f(0, 0); glVertex3f(-bx, by, -rz);
+        glTexCoord2f(3, 0); glVertex3f(-bx, by,  rz);
+        glTexCoord2f(3, 2); glVertex3f(  0, ridge,  rz);
+        glTexCoord2f(0, 2); glVertex3f(  0, ridge, -rz);
         triNormal(bx, by, rz,  bx, by, -rz,  0, ridge, -rz);
-        glVertex3f( bx, by,  rz); glVertex3f( bx, by, -rz);
-        glVertex3f(  0, ridge, -rz); glVertex3f(  0, ridge,  rz);
+        glTexCoord2f(3, 0); glVertex3f( bx, by,  rz);
+        glTexCoord2f(0, 0); glVertex3f( bx, by, -rz);
+        glTexCoord2f(0, 2); glVertex3f(  0, ridge, -rz);
+        glTexCoord2f(3, 2); glVertex3f(  0, ridge,  rz);
     glEnd();
     glBegin(GL_TRIANGLES);
         triNormal(-bx, by, rz,  bx, by, rz,  0, ridge, rz);
-        glVertex3f(-bx, by, rz); glVertex3f( bx, by, rz); glVertex3f(0, ridge, rz);
+        glTexCoord2f(0, 0); glVertex3f(-bx, by, rz);
+        glTexCoord2f(1, 0); glVertex3f( bx, by, rz);
+        glTexCoord2f(0.5f, 2); glVertex3f(0, ridge, rz);
         triNormal( bx, by, -rz,  -bx, by, -rz,  0, ridge, -rz);
-        glVertex3f( bx, by, -rz); glVertex3f(-bx, by, -rz); glVertex3f(0, ridge, -rz);
+        glTexCoord2f(1, 0); glVertex3f( bx, by, -rz);
+        glTexCoord2f(0, 0); glVertex3f(-bx, by, -rz);
+        glTexCoord2f(0.5f, 2); glVertex3f(0, ridge, -rz);
     glEnd();
+    if (texOn && texRooftile) glDisable(GL_TEXTURE_2D);
+
+    // Soffit — horizontal plank ceiling under the roof prism. Without this, looking
+    // up at the eaves overhang (or up from inside the shed) shows straight through.
+    // Offset 5mm below wall top to avoid z-fight with the wall's top face.
+    SetMaterial(0.40f, 0.28f, 0.16f);
+    if (texOn && texWoodplank) { glEnable(GL_TEXTURE_2D); glBindTexture(GL_TEXTURE_2D, texWoodplank); }
+    glBegin(GL_QUADS);
+        glNormal3f(0, -1, 0);
+        glTexCoord2f(0, 0); glVertex3f(-bx, by - 0.005f, -rz);
+        glTexCoord2f(2, 0); glVertex3f( bx, by - 0.005f, -rz);
+        glTexCoord2f(2, 1); glVertex3f( bx, by - 0.005f,  rz);
+        glTexCoord2f(0, 1); glVertex3f(-bx, by - 0.005f,  rz);
+    glEnd();
+    if (texOn && texWoodplank) glDisable(GL_TEXTURE_2D);
     glEnable(GL_CULL_FACE);
 
     // door on front face (z = 1.5), slightly offset from centre
@@ -582,6 +619,7 @@ void DrawBoulder() {
 
 void DrawFence(int count, float spacing) {
     SetMaterial(0.60f, 0.45f, 0.25f);
+    if (texOn && texWoodplank) { glEnable(GL_TEXTURE_2D); glBindTexture(GL_TEXTURE_2D, texWoodplank); }
     const float pb = 0.06f, ph = 0.12f; // pyramid cap: half-base, height
 
     for (int i = 0; i < count; i++) {
@@ -611,6 +649,7 @@ void DrawFence(int count, float spacing) {
         glTranslatef((count - 1) * spacing * 0.5f - 0.05f, 0.45f, 0);
         DrawBox((count - 1) * spacing, 0.06f, 0.06f);
     glPopMatrix();
+    if (texOn && texWoodplank) glDisable(GL_TEXTURE_2D);
 }
 
 // Windmill sail: tapered canvas panel on a wooden lattice frame.
@@ -1149,24 +1188,40 @@ void DrawFountain() {
     }
     glEnd();
 
-    // water surface — dark teal, high specular, ripple
+    // water surface — textured (matches lake) so the basin reads as real water
     {
-        GLfloat wa[] = {0.01f,0.05f,0.12f,1}; GLfloat wd[] = {0.04f,0.10f,0.24f,1};
-        GLfloat ws[] = {0.72f,0.80f,0.95f,1};
-        glMaterialfv(GL_FRONT,GL_AMBIENT,  wa);
-        glMaterialfv(GL_FRONT,GL_DIFFUSE,  wd);
-        glMaterialfv(GL_FRONT,GL_SPECULAR, ws);
-        glMaterialf (GL_FRONT,GL_SHININESS,90.0f);
+        GLfloat wa[] = {0.25f,0.40f,0.65f,1}; GLfloat wd[] = {0.55f,0.75f,0.95f,1};
+        GLfloat ws[] = {0.92f,0.96f,1.00f,1}; GLfloat we[] = {0.15f,0.22f,0.38f,1};
+        glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT,  wa);
+        glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE,  wd);
+        glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, ws);
+        glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, we);
+        glMaterialf (GL_FRONT_AND_BACK, GL_SHININESS, 96.0f);
     }
-    glBegin(GL_TRIANGLE_FAN);
-    glNormal3f(0,1,0);
-    glVertex3f(0, bH-0.03f, 0);
-    for (int i = 0; i <= bSegs; i++) {
-        float a  = (float)i / bSegs * 2.0f * (float)M_PI;
-        float vy = bH - 0.03f + 0.010f * sinf(rippleTime*1.6f + cosf(a)*2.2f);
-        glVertex3f(cosf(a)*(bRi-0.05f), vy, sinf(a)*(bRi-0.05f));
+    if (texOn && texWater) {
+        glEnable(GL_TEXTURE_2D);
+        glBindTexture(GL_TEXTURE_2D, texWater);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
     }
-    glEnd();
+    {
+        const float uvShift = rippleTime * 0.03f;
+        const float uvScale = 0.5f;  // ~1 tile across the basin
+        glBegin(GL_TRIANGLE_FAN);
+        glNormal3f(0,1,0);
+        glTexCoord2f(0.5f + uvShift, 0.5f + uvShift);
+        glVertex3f(0, bH-0.03f, 0);
+        for (int i = 0; i <= bSegs; i++) {
+            float a  = (float)i / bSegs * 2.0f * (float)M_PI;
+            float ca = cosf(a), sa = sinf(a);
+            float vy = bH - 0.03f + 0.010f * sinf(rippleTime*1.6f + ca*2.2f);
+            glTexCoord2f(0.5f + ca*uvScale + uvShift, 0.5f + sa*uvScale + uvShift);
+            glVertex3f(ca*(bRi-0.05f), vy, sa*(bRi-0.05f));
+        }
+        glEnd();
+    }
+    if (texOn && texWater) glDisable(GL_TEXTURE_2D);
+    { GLfloat zero[] = {0,0,0,1}; glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, zero); }
 
     // central pedestal (8-sided cylinder)
     const int   pSegs = 8;
@@ -1524,33 +1579,49 @@ void DrawLake() {
     }
     glEnd();
 
-    // 2. Water surface — emissive night-blue
+    // 2. Water surface — textured, emissive so it glows at night.
+    // Drawn as a separate textured disc so it stands out clearly above the mud bed.
     {
-        GLfloat wAmb[]  = {0.08f, 0.18f, 0.45f, 1.0f};
-        GLfloat wDiff[] = {0.12f, 0.28f, 0.65f, 1.0f};
-        GLfloat wSpec[] = {0.90f, 0.94f, 1.00f, 1.0f};
-        GLfloat wEmit[] = {0.10f, 0.22f, 0.52f, 1.0f};  // visible night-blue glow
-        glMaterialfv(GL_FRONT, GL_AMBIENT,   wAmb);
-        glMaterialfv(GL_FRONT, GL_DIFFUSE,   wDiff);
-        glMaterialfv(GL_FRONT, GL_SPECULAR,  wSpec);
-        glMaterialfv(GL_FRONT, GL_EMISSION,  wEmit);
-        glMaterialf (GL_FRONT, GL_SHININESS, 128.0f);
+        GLfloat wAmb[]  = {0.25f, 0.40f, 0.65f, 1.0f};
+        GLfloat wDiff[] = {0.55f, 0.75f, 0.95f, 1.0f};
+        GLfloat wSpec[] = {0.95f, 0.98f, 1.00f, 1.0f};
+        GLfloat wEmit[] = {0.18f, 0.28f, 0.45f, 1.0f};
+        glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT,   wAmb);
+        glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE,   wDiff);
+        glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR,  wSpec);
+        glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION,  wEmit);
+        glMaterialf (GL_FRONT_AND_BACK, GL_SHININESS, 96.0f);
     }
+    if (texOn && texWater) {
+        glEnable(GL_TEXTURE_2D);
+        glBindTexture(GL_TEXTURE_2D, texWater);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    }
+    glDisable(GL_CULL_FACE);  // water visible from both sides (e.g. low camera angle)
+    const float tileU = rx / 3.0f;  // ~3 tiles across X
+    const float tileV = rz / 3.0f;
+    const float uvShift = rippleTime * 0.03f;  // slow drift so water "flows"
     glBegin(GL_TRIANGLE_FAN);
         glNormal3f(0, 1, 0);
+        glTexCoord2f(0.5f + uvShift, 0.5f + uvShift);
         glVertex3f(cx, wY, cz);
         for (int i = 0; i <= segs; i++) {
             float a  = (float)i / segs * 2.0f * (float)M_PI;
-            float vx = cx + cosf(a) * rx;
-            float vz = cz + sinf(a) * rz;
+            float ca = cosf(a), sa = sinf(a);
+            float vx = cx + ca * rx;
+            float vz = cz + sa * rz;
             float vy = wY
                      + 0.020f * sinf(rippleTime * 1.3f + vx * 0.55f)
                      + 0.012f * sinf(rippleTime * 0.8f + vz * 0.72f);
+            glTexCoord2f(0.5f + ca * tileU + uvShift, 0.5f + sa * tileV + uvShift);
             glVertex3f(vx, vy, vz);
         }
     glEnd();
+    glEnable(GL_CULL_FACE);
+    if (texOn && texWater) glDisable(GL_TEXTURE_2D);
     // Reset emission so subsequent objects are not affected
-    { GLfloat zero[] = {0,0,0,1}; glMaterialfv(GL_FRONT, GL_EMISSION, zero); }
+    { GLfloat zero[] = {0,0,0,1}; glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, zero); }
 
     // 3. Shore reeds — 22 reeds just outside water edge
     for (int i = 0; i < 22; i++) {
@@ -1716,10 +1787,10 @@ void DrawTerrain() {
         {{-40,0.5f, 40},{-13,0.0f, 40},{ 13,0.0f, 40},{40,0.5f, 40}},
     };
     static float tcp[4][4][2] = {
-        {{0,0},{1.67f,0},{3.33f,0},{5,0}},
-        {{0,1.67f},{1.67f,1.67f},{3.33f,1.67f},{5,1.67f}},
-        {{0,3.33f},{1.67f,3.33f},{3.33f,3.33f},{5,3.33f}},
-        {{0,5    },{1.67f,5    },{3.33f,5    },{5,5    }},
+        {{0,0},{6.67f,0},{13.33f,0},{20,0}},
+        {{0,6.67f},{6.67f,6.67f},{13.33f,6.67f},{20,6.67f}},
+        {{0,13.33f},{6.67f,13.33f},{13.33f,13.33f},{20,13.33f}},
+        {{0,20   },{6.67f,20   },{13.33f,20   },{20,20   }},
     };
 
     SetMaterial(0.20f, 0.55f, 0.20f, 4.0f);

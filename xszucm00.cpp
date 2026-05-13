@@ -102,6 +102,16 @@ static void SaveBMP(const char* path, int w, int h) {
     fclose(f);
 }
 
+// Returns rel if it exists in cwd, else tries "../rel" (for CLion cmake-build-debug runs).
+static std::string findAsset(const char* rel) {
+    FILE* f = fopen(rel, "rb");
+    if (f) { fclose(f); return rel; }
+    std::string up = std::string("../") + rel;
+    f = fopen(up.c_str(), "rb");
+    if (f) { fclose(f); return up; }
+    return rel;
+}
+
 // ─── GLUT callbacks ──────────────────────────────────────────────────────────
 
 void OnReshape(int w, int h) {
@@ -218,20 +228,10 @@ void OnInit() {
 
     // ── grass BMP texture ────────────────────────────────────────────────────
     {
-        const char* grassPath = "assets/textures/grass.bmp";
-        Log("TEX", "loading grass texture: %s", grassPath);
+        std::string grassPath = findAsset("assets/textures/grass.bmp");
+        Log("TEX", "loading grass texture: %s", grassPath.c_str());
 
-        // Check the file is reachable before handing off to imageLoad
-        FILE* probe = fopen(grassPath, "rb");
-        if (probe) {
-            fclose(probe);
-            Log("TEX", "  file found OK");
-        } else {
-            Log("TEX", "  ERROR: file NOT found — check working directory!");
-            Log("TEX", "  expected full path: %s/%s", cwd, grassPath);
-        }
-
-        bool ok = setTexture(grassPath, &texGrass, true);
+        bool ok = setTexture(grassPath.c_str(), &texGrass, true);
         Log("TEX", "  setTexture() returned: %s", ok ? "SUCCESS" : "FAILED");
         Log("TEX", "  texGrass ID=%u  glIsTexture=%s",
             texGrass, glIsTexture(texGrass) ? "true" : "false");
@@ -246,6 +246,29 @@ void OnInit() {
             Log("TEX", "  filter params set (LINEAR_MIPMAP_LINEAR / REPEAT)");
         }
         CheckGL("grass texture");
+    }
+
+    // ── additional textures (bark, rooftile, woodplank) ─────────────────────
+    {
+        struct { const char* rel; unsigned int* id; } extras[] = {
+            {"assets/textures/treebark.bmp",  &texBark},
+            {"assets/textures/rooftiles.bmp", &texRooftile},
+            {"assets/textures/woodplank.bmp", &texWoodplank},
+            {"assets/textures/water.bmp",     &texWater},
+        };
+        for (auto& e : extras) {
+            std::string p = findAsset(e.rel);
+            bool ok = setTexture(p.c_str(), e.id, true);
+            Log("TEX", "  %s -> ID=%u  %s", p.c_str(), *e.id, ok ? "OK" : "FAILED");
+            if (ok && *e.id) {
+                glBindTexture(GL_TEXTURE_2D, *e.id);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+            }
+        }
+        CheckGL("additional textures");
     }
 
     // star field — seeded once so CI screenshots are pixel-perfect
