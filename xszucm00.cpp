@@ -2,37 +2,61 @@
  * MPC-MPG 2025/26 - Semester project
  *
  * Author:      Martin Szüč
- * Student ID:  (231284)
+ * Student ID:  231284
+ * Login:       xszucm00
  * Email:       xszucm00@vut.cz
  *
  * Project name: Night Park
  *
  * Implemented tasks:
  *   1.  Object modelling (5+ custom objects)       3 b
- *   2.  Animation (windmill)                       1 b
+ *         tree, bench, lantern, shed, boulder, fence, windmill,
+ *         fountain, bridge, ducks, fireflies
+ *   2.  Animation (windmill rotation)              1 b
  *   3.  Lighting + normals                         1 b
- *   4.  Free movement (mouse + WASD/arrows)        1 b
- *   5.  Menu (6 items)                             2 b
- *   6.  Text display (HUD)                         2 b
- *   7.  Handheld torch (key R)                     2 b
+ *         GL_LIGHT0 moon (directional), GL_LIGHT1 torch (spotlight),
+ *         GL_LIGHT2/3 lantern point lights, GL_LIGHT4 fountain
+ *   4.  Free movement (WASD + arrows + mouse look) 1 b
+ *   5.  Menu (right-click, 6+ items)               2 b
+ *   6.  Text display (HUD — position, FPS, action) 2 b
+ *   7.  Handheld torch (GL_LIGHT1 spotlight, key R) 2 b
  *   10. Ascend/descend (Page Up/Down)              1 b
+ *   11. Throw object (Space, projectile + gravity) 2 b
  *   12. Step simulation (camera bobbing)           2 b
- *   14. Transparency (lantern window)              1 b
- *   16. Texturing (grass.bmp + checker)            2 b
- *   17. Bezier patches (terrain)                   2 b
- *   11. Throw object (Space + gravity)             2 b
+ *   14. Transparency (lantern window, alpha blend) 1 b
+ *   16. Texturing (6 BMP textures)                 2 b
+ *         grass.bmp, checker (procedural), treebark.bmp,
+ *         woodplank.bmp, rooftiles.bmp, water.bmp
+ *   17. Bezier patches (terrain surface)           2 b
  *                                              TOTAL: 24 b
  *
  * Controls:
- *   W/S/A/D or arrows   move
- *   mouse drag          look around
+ *   W/S/A/D or arrows   move forward/back/strafe
+ *   mouse drag          look around (pitch + yaw)
  *   R                   torch ON/OFF
- *   Space               throw object
- *   Page Up/Down        camera height
- *   right mouse button  menu
+ *   Space               throw object (gravity-affected)
+ *   Page Up/Down        raise/lower camera height
+ *   P                   print camera position to stdout
+ *   right mouse button  context menu
  *   Esc                 quit
  *
- * Platform: macOS 14, CLion, OpenGL/GLUT (framework)
+ * Custom ideas / extensions beyond base requirements:
+ *   - Night atmosphere: procedural star field (200 stars, twinkle animation),
+ *     moon billboard with glow halo, atmospheric fog (GL_EXP2)
+ *   - Fireflies: 8 wandering point glows with randomised blink phases
+ *   - Fountain: rippling water surface, animated jet column, basin light
+ *   - Lake with textured animated water surface, reed plants, duck models,
+ *     wooden bridge with raised deck and staircases at both ends
+ *   - Windmill: tapered octagonal tower, 4 canvas sails with lattice frames,
+ *     animated rotation, ground shadow + glow pass
+ *   - Impact flashes on projectile landing
+ *   - Real delta-time physics (glutElapsedTime, 50 ms clamp)
+ *   - Lantern point lights (GL_LIGHT2/3) with warm attenuation
+ *   - Bark, woodplank, rooftile, water BMP textures on scene objects
+ *
+ * Platform / configuration:
+ *   macOS 15, Apple M4 Pro, CLion 2025, OpenGL 2.1 + GLUT framework
+ *   Also tested: Ubuntu 22.04 + Mesa (CI, headless via Xvfb)
  */
 
 #include "scene.h"
