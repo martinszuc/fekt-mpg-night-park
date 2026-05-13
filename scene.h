@@ -488,35 +488,99 @@ static void DrawShedInterior() {
     if (texOn && texWoodplank) { glEnable(GL_TEXTURE_2D); glBindTexture(GL_TEXTURE_2D, texWoodplank); }
 
     glBegin(GL_QUADS);
-    // back inner wall  (z = -id, normal +Z, full width)
+    // ── back inner wall (z=-id, normal +Z) — window x∈[-0.43,0.43] y∈[0.97,1.60]
     glNormal3f(0, 0, 1);
-    glTexCoord2f(4, 0); glVertex3f( 2.0f, 0,    -id);
-    glTexCoord2f(4,2.5);glVertex3f( 2.0f, ch,   -id);
-    glTexCoord2f(0,2.5);glVertex3f(-2.0f, ch,   -id);
-    glTexCoord2f(0, 0); glVertex3f(-2.0f, 0,    -id);
+    // band y=[0, 0.97]
+    glTexCoord2f(4, 0);     glVertex3f( 2.0f, 0,     -id);
+    glTexCoord2f(4, 0.97f); glVertex3f( 2.0f, 0.97f, -id);
+    glTexCoord2f(0, 0.97f); glVertex3f(-2.0f, 0.97f, -id);
+    glTexCoord2f(0, 0);     glVertex3f(-2.0f, 0,     -id);
+    // band y=[0.97,1.60] right of window
+    glTexCoord2f(4.0f,  0.97f); glVertex3f( 2.0f,  0.97f, -id);
+    glTexCoord2f(4.0f,  1.60f); glVertex3f( 2.0f,  1.60f, -id);
+    glTexCoord2f(2.43f, 1.60f); glVertex3f( 0.43f, 1.60f, -id);
+    glTexCoord2f(2.43f, 0.97f); glVertex3f( 0.43f, 0.97f, -id);
+    // band y=[0.97,1.60] left of window
+    glTexCoord2f(1.57f, 0.97f); glVertex3f(-0.43f, 0.97f, -id);
+    glTexCoord2f(1.57f, 1.60f); glVertex3f(-0.43f, 1.60f, -id);
+    glTexCoord2f(0,     1.60f); glVertex3f(-2.0f,  1.60f, -id);
+    glTexCoord2f(0,     0.97f); glVertex3f(-2.0f,  0.97f, -id);
+    // band y=[1.60, ch]
+    glTexCoord2f(4, 1.60f); glVertex3f( 2.0f, 1.60f, -id);
+    glTexCoord2f(4, ch);    glVertex3f( 2.0f, ch,    -id);
+    glTexCoord2f(0, ch);    glVertex3f(-2.0f, ch,    -id);
+    glTexCoord2f(0, 1.60f); glVertex3f(-2.0f, 1.60f, -id);
 
-    // left inner wall  (x = -iw, normal +X, full depth)
+    // ── left inner wall (x=-iw, normal +X) — window z∈[-0.35,0.35] y∈[0.97,1.60]
     glNormal3f(1, 0, 0);
-    glTexCoord2f(0, 0); glVertex3f(-iw, 0,    -1.5f);
-    glTexCoord2f(0,2.5);glVertex3f(-iw, ch,   -1.5f);
-    glTexCoord2f(3,2.5);glVertex3f(-iw, ch,    1.5f);
-    glTexCoord2f(3, 0); glVertex3f(-iw, 0,     1.5f);
+    // band y=[0, 0.97]
+    glTexCoord2f(0, 0);     glVertex3f(-iw, 0,     -1.5f);
+    glTexCoord2f(0, 0.97f); glVertex3f(-iw, 0.97f, -1.5f);
+    glTexCoord2f(3, 0.97f); glVertex3f(-iw, 0.97f,  1.5f);
+    glTexCoord2f(3, 0);     glVertex3f(-iw, 0,      1.5f);
+    // band y=[0.97,1.60] back of window
+    glTexCoord2f(0,     0.97f); glVertex3f(-iw, 0.97f, -1.5f);
+    glTexCoord2f(0,     1.60f); glVertex3f(-iw, 1.60f, -1.5f);
+    glTexCoord2f(1.15f, 1.60f); glVertex3f(-iw, 1.60f, -0.35f);
+    glTexCoord2f(1.15f, 0.97f); glVertex3f(-iw, 0.97f, -0.35f);
+    // band y=[0.97,1.60] front of window
+    glTexCoord2f(1.85f, 0.97f); glVertex3f(-iw, 0.97f, 0.35f);
+    glTexCoord2f(1.85f, 1.60f); glVertex3f(-iw, 1.60f, 0.35f);
+    glTexCoord2f(3,     1.60f); glVertex3f(-iw, 1.60f, 1.5f);
+    glTexCoord2f(3,     0.97f); glVertex3f(-iw, 0.97f, 1.5f);
+    // band y=[1.60, ch]
+    glTexCoord2f(0, 1.60f); glVertex3f(-iw, 1.60f, -1.5f);
+    glTexCoord2f(0, ch);    glVertex3f(-iw, ch,    -1.5f);
+    glTexCoord2f(3, ch);    glVertex3f(-iw, ch,     1.5f);
+    glTexCoord2f(3, 1.60f); glVertex3f(-iw, 1.60f,  1.5f);
 
-    // right inner wall (x = +iw, normal -X, full depth)
+    // ── right inner wall (x=+iw, normal -X) — window z∈[-0.35,0.35] y∈[0.97,1.60]
     glNormal3f(-1, 0, 0);
-    glTexCoord2f(0, 0); glVertex3f( iw, 0,    1.5f);
-    glTexCoord2f(0,2.5);glVertex3f( iw, ch,   1.5f);
-    glTexCoord2f(3,2.5);glVertex3f( iw, ch,  -1.5f);
-    glTexCoord2f(3, 0); glVertex3f( iw, 0,   -1.5f);
+    // band y=[0, 0.97]
+    glTexCoord2f(0, 0);     glVertex3f( iw, 0,      1.5f);
+    glTexCoord2f(0, 0.97f); glVertex3f( iw, 0.97f,  1.5f);
+    glTexCoord2f(3, 0.97f); glVertex3f( iw, 0.97f, -1.5f);
+    glTexCoord2f(3, 0);     glVertex3f( iw, 0,     -1.5f);
+    // band y=[0.97,1.60] front of window
+    glTexCoord2f(0,     0.97f); glVertex3f( iw, 0.97f,  1.5f);
+    glTexCoord2f(0,     1.60f); glVertex3f( iw, 1.60f,  1.5f);
+    glTexCoord2f(1.15f, 1.60f); glVertex3f( iw, 1.60f,  0.35f);
+    glTexCoord2f(1.15f, 0.97f); glVertex3f( iw, 0.97f,  0.35f);
+    // band y=[0.97,1.60] back of window
+    glTexCoord2f(1.85f, 0.97f); glVertex3f( iw, 0.97f, -0.35f);
+    glTexCoord2f(1.85f, 1.60f); glVertex3f( iw, 1.60f, -0.35f);
+    glTexCoord2f(3,     1.60f); glVertex3f( iw, 1.60f, -1.5f);
+    glTexCoord2f(3,     0.97f); glVertex3f( iw, 0.97f, -1.5f);
+    // band y=[1.60, ch]
+    glTexCoord2f(0, 1.60f); glVertex3f( iw, 1.60f,  1.5f);
+    glTexCoord2f(0, ch);    glVertex3f( iw, ch,     1.5f);
+    glTexCoord2f(3, ch);    glVertex3f( iw, ch,    -1.5f);
+    glTexCoord2f(3, 1.60f); glVertex3f( iw, 1.60f, -1.5f);
 
-    // front inner wall — left of door opening (x: -2.0 → 0.0)
+    // ── front inner wall left of door — window x∈[-1.78,-1.12] y∈[0.97,1.60]
     glNormal3f(0, 0, -1);
-    glTexCoord2f(0, 0); glVertex3f(-2.0f, 0,    id);
-    glTexCoord2f(0,2.5);glVertex3f(-2.0f, ch,   id);
-    glTexCoord2f(2,2.5);glVertex3f( 0.0f, ch,   id);
-    glTexCoord2f(2, 0); glVertex3f( 0.0f, 0,    id);
+    // band y=[0, 0.97]
+    glTexCoord2f(0, 0);     glVertex3f(-2.0f, 0,     id);
+    glTexCoord2f(0, 0.97f); glVertex3f(-2.0f, 0.97f, id);
+    glTexCoord2f(2, 0.97f); glVertex3f( 0.0f, 0.97f, id);
+    glTexCoord2f(2, 0);     glVertex3f( 0.0f, 0,     id);
+    // band y=[0.97,1.60] left of window
+    glTexCoord2f(0,     0.97f); glVertex3f(-2.0f,  0.97f, id);
+    glTexCoord2f(0,     1.60f); glVertex3f(-2.0f,  1.60f, id);
+    glTexCoord2f(0.22f, 1.60f); glVertex3f(-1.78f, 1.60f, id);
+    glTexCoord2f(0.22f, 0.97f); glVertex3f(-1.78f, 0.97f, id);
+    // band y=[0.97,1.60] right of window
+    glTexCoord2f(0.88f, 0.97f); glVertex3f(-1.12f, 0.97f, id);
+    glTexCoord2f(0.88f, 1.60f); glVertex3f(-1.12f, 1.60f, id);
+    glTexCoord2f(2,     1.60f); glVertex3f( 0.0f,  1.60f, id);
+    glTexCoord2f(2,     0.97f); glVertex3f( 0.0f,  0.97f, id);
+    // band y=[1.60, ch]
+    glTexCoord2f(0, 1.60f); glVertex3f(-2.0f, 1.60f, id);
+    glTexCoord2f(0, ch);    glVertex3f(-2.0f, ch,    id);
+    glTexCoord2f(2, ch);    glVertex3f( 0.0f, ch,    id);
+    glTexCoord2f(2, 1.60f); glVertex3f( 0.0f, 1.60f, id);
 
-    // front inner wall — right of door opening (x: 0.8 → 2.0)
+    // front inner wall — right of door opening (x: 0.8 → 2.0) — no window
     glNormal3f(0, 0, -1);
     glTexCoord2f(0, 0); glVertex3f( 0.8f, 0,    id);
     glTexCoord2f(0,2.5);glVertex3f( 0.8f, ch,   id);
@@ -544,11 +608,74 @@ static void DrawShedInterior() {
     if (texOn && texWoodplank) glDisable(GL_TEXTURE_2D);
 }
 
+// Outer shed box (4×2.5×3) with door + window openings cut from the walls.
+static void DrawShedWalls() {
+    const float hw = 2.0f, hd = 1.5f, h = 2.5f;
+
+    glBegin(GL_QUADS);
+
+    // ── top (+Y) ──
+    glNormal3f(0, 1, 0);
+    glTexCoord2f(0,0); glVertex3f(-hw,h,-hd);
+    glTexCoord2f(0,1); glVertex3f(-hw,h, hd);
+    glTexCoord2f(1,1); glVertex3f( hw,h, hd);
+    glTexCoord2f(1,0); glVertex3f( hw,h,-hd);
+
+    // ── bottom (-Y) ──
+    glNormal3f(0,-1,0);
+    glTexCoord2f(0,0); glVertex3f(-hw,0,-hd);
+    glTexCoord2f(1,0); glVertex3f( hw,0,-hd);
+    glTexCoord2f(1,1); glVertex3f( hw,0, hd);
+    glTexCoord2f(0,1); glVertex3f(-hw,0, hd);
+
+    // ── front wall (+Z) — door x∈[0,0.8] y∈[0,1.8], window x∈[-1.78,-1.12] y∈[0.97,1.60]
+    #define FQ(x,y) glTexCoord2f(((x)+2.0f)/4.0f,(y)/2.5f); glVertex3f((x),(y),hd)
+    glNormal3f(0,0,1);
+    FQ(-2,0);     FQ(0,0);       FQ(0,0.97f);     FQ(-2,0.97f);
+    FQ(0.8f,0);   FQ(2,0);       FQ(2,0.97f);     FQ(0.8f,0.97f);
+    FQ(-2,0.97f); FQ(-1.78f,0.97f); FQ(-1.78f,1.60f); FQ(-2,1.60f);
+    FQ(-1.12f,0.97f); FQ(0,0.97f); FQ(0,1.60f);   FQ(-1.12f,1.60f);
+    FQ(0.8f,0.97f); FQ(2,0.97f); FQ(2,1.60f);     FQ(0.8f,1.60f);
+    FQ(-2,1.60f); FQ(0,1.60f);   FQ(0,1.80f);     FQ(-2,1.80f);
+    FQ(0.8f,1.60f); FQ(2,1.60f); FQ(2,1.80f);     FQ(0.8f,1.80f);
+    FQ(-2,1.80f); FQ(2,1.80f);   FQ(2,h);         FQ(-2,h);
+    #undef FQ
+
+    // ── back wall (-Z) — window x∈[-0.43,0.43] y∈[0.97,1.60]
+    #define BQ(x,y) glTexCoord2f((2.0f-(x))/4.0f,(y)/2.5f); glVertex3f((x),(y),-hd)
+    glNormal3f(0,0,-1);
+    BQ(2,0);       BQ(-2,0);       BQ(-2,0.97f);    BQ(2,0.97f);
+    BQ(2,0.97f);   BQ(0.43f,0.97f); BQ(0.43f,1.60f); BQ(2,1.60f);
+    BQ(-0.43f,0.97f); BQ(-2,0.97f); BQ(-2,1.60f);  BQ(-0.43f,1.60f);
+    BQ(2,1.60f);   BQ(-2,1.60f);   BQ(-2,h);       BQ(2,h);
+    #undef BQ
+
+    // ── right wall (+X) — window z∈[-0.35,0.35] y∈[0.97,1.60]
+    #define RQ(z,y) glTexCoord2f((1.5f-(z))/3.0f,(y)/2.5f); glVertex3f(hw,(y),(z))
+    glNormal3f(1,0,0);
+    RQ(1.5f,0);     RQ(-1.5f,0);     RQ(-1.5f,0.97f); RQ(1.5f,0.97f);
+    RQ(1.5f,0.97f); RQ(0.35f,0.97f); RQ(0.35f,1.60f); RQ(1.5f,1.60f);
+    RQ(-0.35f,0.97f); RQ(-1.5f,0.97f); RQ(-1.5f,1.60f); RQ(-0.35f,1.60f);
+    RQ(1.5f,1.60f); RQ(-1.5f,1.60f); RQ(-1.5f,h);    RQ(1.5f,h);
+    #undef RQ
+
+    // ── left wall (-X) — window z∈[-0.35,0.35] y∈[0.97,1.60]
+    #define LQ(z,y) glTexCoord2f(((z)+1.5f)/3.0f,(y)/2.5f); glVertex3f(-hw,(y),(z))
+    glNormal3f(-1,0,0);
+    LQ(-1.5f,0);     LQ(1.5f,0);     LQ(1.5f,0.97f); LQ(-1.5f,0.97f);
+    LQ(-1.5f,0.97f); LQ(-0.35f,0.97f); LQ(-0.35f,1.60f); LQ(-1.5f,1.60f);
+    LQ(0.35f,0.97f); LQ(1.5f,0.97f); LQ(1.5f,1.60f); LQ(0.35f,1.60f);
+    LQ(-1.5f,1.60f); LQ(1.5f,1.60f); LQ(1.5f,h);    LQ(-1.5f,h);
+    #undef LQ
+
+    glEnd();
+}
+
 void DrawShed() {
     // walls
     SetMaterial(0.60f, 0.45f, 0.25f);
     if (texOn && texWoodplank) { glEnable(GL_TEXTURE_2D); glBindTexture(GL_TEXTURE_2D, texWoodplank); }
-    DrawBox(4.0f, 2.5f, 3.0f);
+    DrawShedWalls();
     if (texOn && texWoodplank) glDisable(GL_TEXTURE_2D);
 
     // roof — culling disabled: single-layer surface must render both faces
@@ -1339,6 +1466,7 @@ void DrawFountain() {
     glEnd();
 
     // basin floor — water-textured so no grass shows through the bottom
+    glDisable(GL_CULL_FACE);
     {
         GLfloat wa[] = {0.20f,0.32f,0.55f,1}; GLfloat wd[] = {0.40f,0.60f,0.80f,1};
         GLfloat ws[] = {0.80f,0.88f,1.00f,1}; GLfloat we[] = {0.10f,0.16f,0.28f,1};
@@ -1366,6 +1494,7 @@ void DrawFountain() {
     }
     glEnd();
     if (texOn && texWater) glDisable(GL_TEXTURE_2D);
+    glEnable(GL_CULL_FACE);
     { GLfloat zero[] = {0,0,0,1}; glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, zero); }
 
     // water surface — textured (matches lake) so the basin reads as real water
