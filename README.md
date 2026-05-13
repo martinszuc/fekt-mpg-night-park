@@ -44,6 +44,10 @@
 | [v0.1.0](screenshots/v0.1.0/) | <img src="screenshots/v0.1.0/scene_0.webp" width="200"> | <img src="screenshots/v0.1.0/scene_1.webp" width="200"> | <img src="screenshots/v0.1.0/scene_2.webp" width="200"> |
 <!-- HISTORY_END -->
 
+## Walkthrough
+
+<video src="screenshots/xszucm00_walkthrough.webm" controls width="100%"></video>
+
 ## Overview
 
 Semester project for MPC-MPG (2025/26) at VUT FEKT.
