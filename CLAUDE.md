@@ -82,7 +82,9 @@ CODESTYLE.md          coding and git rules
 
 ### Asset pipeline
 - Textures must be BMP or TGA (imageLoad.h limitation)
-- Convert with: `sips -s format bmp -z 512 512 input.jpg --out assets/textures/name.bmp`
+- imageLoad.h requires Windows 3.x 24-bit BMP (header offset 54). Use ImageMagick with `BMP3:` prefix — `sips` produces newer-format BMPs that imageLoad.h rejects.
+- Convert from PNG/JPG: `magick input.png -resize 512x512! -depth 8 BMP3:assets/textures/name.bmp`
+- For JPEG sources: `magick input.jpg -resize 512x512 -depth 8 BMP3:assets/textures/name.bmp` (omit `!` to keep aspect ratio if desired, but output must be power-of-2)
 - Keep textures power-of-2, max 1024×1024
 
 ---
