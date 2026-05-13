@@ -1174,19 +1174,39 @@ void DrawFountain() {
         float nx = -(x0+x1)*0.5f, nz = -(z0+z1)*0.5f, nl = sqrtf(nx*nx+nz*nz);
         glNormal3f(nx/nl, 0, nz/nl);
         glVertex3f(x1,bH,z1); glVertex3f(x0,bH,z0);
-        glVertex3f(x0,0.04f,z0); glVertex3f(x1,0.04f,z1);
+        glVertex3f(x0,0.08f,z0); glVertex3f(x1,0.08f,z1);
     }
     glEnd();
 
-    // basin floor
+    // basin floor — water-textured so no grass shows through the bottom
+    {
+        GLfloat wa[] = {0.20f,0.32f,0.55f,1}; GLfloat wd[] = {0.40f,0.60f,0.80f,1};
+        GLfloat ws[] = {0.80f,0.88f,1.00f,1}; GLfloat we[] = {0.10f,0.16f,0.28f,1};
+        glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT,  wa);
+        glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE,  wd);
+        glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, ws);
+        glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, we);
+        glMaterialf (GL_FRONT_AND_BACK, GL_SHININESS, 48.0f);
+    }
+    if (texOn && texWater) {
+        glEnable(GL_TEXTURE_2D);
+        glBindTexture(GL_TEXTURE_2D, texWater);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    }
     glBegin(GL_TRIANGLE_FAN);
     glNormal3f(0,1,0);
-    glVertex3f(0, 0.04f, 0);
+    glTexCoord2f(0.5f, 0.5f);
+    glVertex3f(0, 0.08f, 0);
     for (int i = 0; i <= bSegs; i++) {
-        float a = (float)i / bSegs * 2.0f * (float)M_PI;
-        glVertex3f(cosf(a)*bRi, 0.04f, sinf(a)*bRi);
+        float a  = (float)i / bSegs * 2.0f * (float)M_PI;
+        float ca = cosf(a), sa = sinf(a);
+        glTexCoord2f(0.5f + ca*0.5f, 0.5f + sa*0.5f);
+        glVertex3f(ca*bRi, 0.08f, sa*bRi);
     }
     glEnd();
+    if (texOn && texWater) glDisable(GL_TEXTURE_2D);
+    { GLfloat zero[] = {0,0,0,1}; glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, zero); }
 
     // water surface — textured (matches lake) so the basin reads as real water
     {
