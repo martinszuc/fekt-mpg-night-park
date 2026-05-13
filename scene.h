@@ -471,6 +471,79 @@ void DrawLanternGlow(float rx, float ry, float rz,
     glEnable(GL_LIGHTING);
 }
 
+// Interior surfaces for the shed — inner wall faces + floor, all with wood texture.
+// Inner faces are placed 1 cm proud of the outer wall so:
+//   • from outside:  outer wall wins depth test  →  inner face invisible
+//   • from inside:   outer back face is culled   →  inner face visible
+// Call this inside the shed's local transform (glTranslatef(12, 0, -8) already applied).
+static void DrawShedInterior() {
+    // outer box: hw=2.0, hd=1.5, height=2.5
+    // inner faces sit 0.01 past each outer face so z-fighting never occurs
+    static const float iw = 2.01f;   // inner X wall offset (outer=2.00)
+    static const float id = 1.51f;   // inner Z wall offset (outer=1.50)
+    static const float ch = 2.49f;   // ceiling-y  (soffit already draws the ceiling)
+    // door opening: x ∈ [0.0, 0.8], y ∈ [0, 1.8]
+
+    SetMaterial(0.55f, 0.38f, 0.20f, 8.0f);
+    if (texOn && texWoodplank) { glEnable(GL_TEXTURE_2D); glBindTexture(GL_TEXTURE_2D, texWoodplank); }
+
+    glBegin(GL_QUADS);
+    // back inner wall  (z = -id, normal +Z, full width)
+    glNormal3f(0, 0, 1);
+    glTexCoord2f(4, 0); glVertex3f( 2.0f, 0,    -id);
+    glTexCoord2f(4,2.5);glVertex3f( 2.0f, ch,   -id);
+    glTexCoord2f(0,2.5);glVertex3f(-2.0f, ch,   -id);
+    glTexCoord2f(0, 0); glVertex3f(-2.0f, 0,    -id);
+
+    // left inner wall  (x = -iw, normal +X, full depth)
+    glNormal3f(1, 0, 0);
+    glTexCoord2f(0, 0); glVertex3f(-iw, 0,    -1.5f);
+    glTexCoord2f(0,2.5);glVertex3f(-iw, ch,   -1.5f);
+    glTexCoord2f(3,2.5);glVertex3f(-iw, ch,    1.5f);
+    glTexCoord2f(3, 0); glVertex3f(-iw, 0,     1.5f);
+
+    // right inner wall (x = +iw, normal -X, full depth)
+    glNormal3f(-1, 0, 0);
+    glTexCoord2f(0, 0); glVertex3f( iw, 0,    1.5f);
+    glTexCoord2f(0,2.5);glVertex3f( iw, ch,   1.5f);
+    glTexCoord2f(3,2.5);glVertex3f( iw, ch,  -1.5f);
+    glTexCoord2f(3, 0); glVertex3f( iw, 0,   -1.5f);
+
+    // front inner wall — left of door opening (x: -2.0 → 0.0)
+    glNormal3f(0, 0, -1);
+    glTexCoord2f(0, 0); glVertex3f(-2.0f, 0,    id);
+    glTexCoord2f(0,2.5);glVertex3f(-2.0f, ch,   id);
+    glTexCoord2f(2,2.5);glVertex3f( 0.0f, ch,   id);
+    glTexCoord2f(2, 0); glVertex3f( 0.0f, 0,    id);
+
+    // front inner wall — right of door opening (x: 0.8 → 2.0)
+    glNormal3f(0, 0, -1);
+    glTexCoord2f(0, 0); glVertex3f( 0.8f, 0,    id);
+    glTexCoord2f(0,2.5);glVertex3f( 0.8f, ch,   id);
+    glTexCoord2f(1.2f,2.5);glVertex3f(2.0f, ch, id);
+    glTexCoord2f(1.2f, 0); glVertex3f(2.0f, 0,  id);
+
+    // front inner wall — above door opening (x: 0.0 → 0.8, y: 1.8 → ch)
+    glNormal3f(0, 0, -1);
+    glTexCoord2f(0, 1.8f);glVertex3f(0.0f, 1.8f, id);
+    glTexCoord2f(0, ch);  glVertex3f(0.0f, ch,   id);
+    glTexCoord2f(0.8f,ch);glVertex3f(0.8f, ch,   id);
+    glTexCoord2f(0.8f,1.8f);glVertex3f(0.8f,1.8f,id);
+    glEnd();
+
+    // wooden floor  (y = 0.02, slightly above terrain to prevent z-fight)
+    SetMaterial(0.50f, 0.34f, 0.16f, 8.0f);
+    glBegin(GL_QUADS);
+    glNormal3f(0, 1, 0);
+    glTexCoord2f(0, 0); glVertex3f(-1.99f, 0.02f, -1.49f);
+    glTexCoord2f(4, 0); glVertex3f( 1.99f, 0.02f, -1.49f);
+    glTexCoord2f(4, 3); glVertex3f( 1.99f, 0.02f,  1.49f);
+    glTexCoord2f(0, 3); glVertex3f(-1.99f, 0.02f,  1.49f);
+    glEnd();
+
+    if (texOn && texWoodplank) glDisable(GL_TEXTURE_2D);
+}
+
 void DrawShed() {
     // walls
     SetMaterial(0.60f, 0.45f, 0.25f);
@@ -522,18 +595,23 @@ void DrawShed() {
     if (texOn && texWoodplank) glDisable(GL_TEXTURE_2D);
     glEnable(GL_CULL_FACE);
 
-    // door on front face (z = 1.5), slightly offset from centre
+    // door — open, hinged at right edge (x=0.8), swung 90° outward toward +Z
+    // T3 * Ry(90°) * T1 keeps the right-front hinge edge exactly at (0.8, y, 1.5)
     SetMaterial(0.35f, 0.18f, 0.08f);
+    if (texOn && texWoodplank) { glEnable(GL_TEXTURE_2D); glBindTexture(GL_TEXTURE_2D, texWoodplank); }
     glPushMatrix();
-        glTranslatef(0.4f, 0.0f, 1.53f);
+        glTranslatef(0.8f, 0.0f, 1.5f);    // hinge pivot in shed-local space
+        glRotatef(90.0f, 0, 1, 0);          // swing outward (+Z exterior direction)
+        glTranslatef(-0.4f, 0.0f, -0.03f);  // bring right-front edge to pivot
         DrawBox(0.8f, 1.8f, 0.06f);
-        // door knob
+        // door knob — stays on the door, now faces inward when open
         SetMaterial(0.65f, 0.55f, 0.20f, 64.0f);
         glPushMatrix();
             glTranslatef(-0.25f, 0.9f, 0.06f);
             DrawBox(0.08f, 0.08f, 0.08f);
         glPopMatrix();
     glPopMatrix();
+    if (texOn && texWoodplank) glDisable(GL_TEXTURE_2D);
 
     // window frames — dark wood strips around each opening (glass drawn in transparent pass)
     SetMaterial(0.22f, 0.14f, 0.06f, 16.0f);
@@ -567,6 +645,8 @@ void DrawShed() {
         glTranslatef(0, 1.40f, 0);
         DrawBox(0.46f, 0.09f, 0.46f);
     glPopMatrix();
+
+    DrawShedInterior();
 }
 
 // Transparent glass panes for shed windows — call from alpha-blend transparent pass
