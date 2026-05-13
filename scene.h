@@ -535,16 +535,28 @@ void DrawShed() {
         glPopMatrix();
     glPopMatrix();
 
-    // windows on side walls
-    SetMaterial(0.10f, 0.14f, 0.22f, 80.0f); // dark glass
-    glPushMatrix();
-        glTranslatef(-2.02f, 1.0f, 0.0f); // left wall
-        DrawBox(0.08f, 0.60f, 0.70f);
-    glPopMatrix();
-    glPushMatrix();
-        glTranslatef(2.02f, 1.0f, 0.0f);  // right wall
-        DrawBox(0.08f, 0.60f, 0.70f);
-    glPopMatrix();
+    // window frames — dark wood strips around each opening (glass drawn in transparent pass)
+    SetMaterial(0.22f, 0.14f, 0.06f, 16.0f);
+    // left wall: vertical jambs + horizontal sill/lintel
+    glPushMatrix(); glTranslatef(-2.02f, 1.0f, -0.37f);  DrawBox(0.06f, 0.66f, 0.06f); glPopMatrix();
+    glPushMatrix(); glTranslatef(-2.02f, 1.0f,  0.37f);  DrawBox(0.06f, 0.66f, 0.06f); glPopMatrix();
+    glPushMatrix(); glTranslatef(-2.02f, 1.61f, 0.0f);   DrawBox(0.06f, 0.06f, 0.80f); glPopMatrix();
+    glPushMatrix(); glTranslatef(-2.02f, 0.96f, 0.0f);   DrawBox(0.06f, 0.06f, 0.80f); glPopMatrix();
+    // right wall
+    glPushMatrix(); glTranslatef( 2.02f, 1.0f, -0.37f);  DrawBox(0.06f, 0.66f, 0.06f); glPopMatrix();
+    glPushMatrix(); glTranslatef( 2.02f, 1.0f,  0.37f);  DrawBox(0.06f, 0.66f, 0.06f); glPopMatrix();
+    glPushMatrix(); glTranslatef( 2.02f, 1.61f, 0.0f);   DrawBox(0.06f, 0.06f, 0.80f); glPopMatrix();
+    glPushMatrix(); glTranslatef( 2.02f, 0.96f, 0.0f);   DrawBox(0.06f, 0.06f, 0.80f); glPopMatrix();
+    // front wall window (left of door — door occupies x≈0.0..0.8)
+    glPushMatrix(); glTranslatef(-1.80f, 1.0f, 1.52f);  DrawBox(0.06f, 0.66f, 0.06f); glPopMatrix();
+    glPushMatrix(); glTranslatef(-1.10f, 1.0f, 1.52f);  DrawBox(0.06f, 0.66f, 0.06f); glPopMatrix();
+    glPushMatrix(); glTranslatef(-1.45f, 1.61f,1.52f);  DrawBox(0.76f, 0.06f, 0.06f); glPopMatrix();
+    glPushMatrix(); glTranslatef(-1.45f, 0.96f,1.52f);  DrawBox(0.76f, 0.06f, 0.06f); glPopMatrix();
+    // back wall window (centred)
+    glPushMatrix(); glTranslatef(-0.45f, 1.0f, -1.52f); DrawBox(0.06f, 0.66f, 0.06f); glPopMatrix();
+    glPushMatrix(); glTranslatef( 0.45f, 1.0f, -1.52f); DrawBox(0.06f, 0.66f, 0.06f); glPopMatrix();
+    glPushMatrix(); glTranslatef( 0.0f,  1.61f,-1.52f); DrawBox(0.96f, 0.06f, 0.06f); glPopMatrix();
+    glPushMatrix(); glTranslatef( 0.0f,  0.96f,-1.52f); DrawBox(0.96f, 0.06f, 0.06f); glPopMatrix();
 
     // chimney on left side of roof (pokes through slope)
     SetMaterial(0.55f, 0.35f, 0.28f, 12.0f); // brick red
@@ -555,6 +567,74 @@ void DrawShed() {
         glTranslatef(0, 1.40f, 0);
         DrawBox(0.46f, 0.09f, 0.46f);
     glPopMatrix();
+}
+
+// Transparent glass panes for shed windows — call from alpha-blend transparent pass
+// inside the shed's local transform (glTranslatef(12, 0, -8) already applied by caller).
+void DrawShedWindows() {
+    glDisable(GL_LIGHTING);
+    glDisable(GL_CULL_FACE);
+
+    // left-wall pane (x = -2.01, yz centred)
+    glColor4f(0.60f, 0.82f, 0.96f, 0.38f);
+    glBegin(GL_QUADS);
+        glNormal3f(-1, 0, 0);
+        glVertex3f(-2.01f, 0.97f, -0.35f);
+        glVertex3f(-2.01f, 0.97f,  0.35f);
+        glVertex3f(-2.01f, 1.60f,  0.35f);
+        glVertex3f(-2.01f, 1.60f, -0.35f);
+        glNormal3f( 1, 0, 0);
+        glVertex3f(-2.01f, 0.97f,  0.35f);
+        glVertex3f(-2.01f, 0.97f, -0.35f);
+        glVertex3f(-2.01f, 1.60f, -0.35f);
+        glVertex3f(-2.01f, 1.60f,  0.35f);
+    glEnd();
+
+    // right-wall pane
+    glBegin(GL_QUADS);
+        glNormal3f( 1, 0, 0);
+        glVertex3f( 2.01f, 0.97f,  0.35f);
+        glVertex3f( 2.01f, 0.97f, -0.35f);
+        glVertex3f( 2.01f, 1.60f, -0.35f);
+        glVertex3f( 2.01f, 1.60f,  0.35f);
+        glNormal3f(-1, 0, 0);
+        glVertex3f( 2.01f, 0.97f, -0.35f);
+        glVertex3f( 2.01f, 0.97f,  0.35f);
+        glVertex3f( 2.01f, 1.60f,  0.35f);
+        glVertex3f( 2.01f, 1.60f, -0.35f);
+    glEnd();
+
+    // front-wall pane (z = 1.51, left of door)
+    glColor4f(0.68f, 0.88f, 0.98f, 0.42f);
+    glBegin(GL_QUADS);
+        glNormal3f(0, 0, 1);
+        glVertex3f(-1.78f, 0.97f, 1.51f);
+        glVertex3f(-1.12f, 0.97f, 1.51f);
+        glVertex3f(-1.12f, 1.60f, 1.51f);
+        glVertex3f(-1.78f, 1.60f, 1.51f);
+        glNormal3f(0, 0, -1);
+        glVertex3f(-1.12f, 0.97f, 1.51f);
+        glVertex3f(-1.78f, 0.97f, 1.51f);
+        glVertex3f(-1.78f, 1.60f, 1.51f);
+        glVertex3f(-1.12f, 1.60f, 1.51f);
+    glEnd();
+
+    // back-wall pane (z = -1.51, wide)
+    glBegin(GL_QUADS);
+        glNormal3f(0, 0, -1);
+        glVertex3f(-0.43f, 0.97f, -1.51f);
+        glVertex3f( 0.43f, 0.97f, -1.51f);
+        glVertex3f( 0.43f, 1.60f, -1.51f);
+        glVertex3f(-0.43f, 1.60f, -1.51f);
+        glNormal3f(0, 0, 1);
+        glVertex3f( 0.43f, 0.97f, -1.51f);
+        glVertex3f(-0.43f, 0.97f, -1.51f);
+        glVertex3f(-0.43f, 1.60f, -1.51f);
+        glVertex3f( 0.43f, 1.60f, -1.51f);
+    glEnd();
+
+    glEnable(GL_CULL_FACE);
+    glEnable(GL_LIGHTING);
 }
 
 void DrawBoulder() {
